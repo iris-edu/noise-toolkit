@@ -1,14 +1,23 @@
- Incorporated Research Institutions for Seismology (IRIS)
- Data Management Center (DMC)
- Data Products Team
- Noise Toolkit (NTK)
+ Incorporated Research Institutions for Seismology (IRIS)\
+ Data Management Center (DMC)\
+ Data Products Team\
+ Noise Toolkit (NTK)\
 
  2020-02-24
  V.2020.055
 
 ------------------------------------------------------------------------------------------------------------------------
 
- DESCRIPTION:
+**NOTES:**
+ 
+This repository is the new home for the Noise Toolkit on seiscode (https://seiscode.iris.washington.edu/projects/iris-dmc-noise-toolkit):
+
+    - IRIS_NTK_PSD_scripts_0.9.5.tar.gz
+    - IRIS_NTK_ME_scripts_0.6.0.tar.gz
+    - IRIS_NTK_POLAR_scripts_0.6.5.tar.gz
+    
+    
+**DESCRIPTION:**
 
 The IRIS DMC Noise Toolkit data product is a collection of three open-source bundles that provide relatively simple 
 Python/ObsPy code bundles to:
@@ -19,7 +28,7 @@ Python/ObsPy code bundles to:
 
 **PDF/PSD bundle**
 
-The PDF/PSD bundle provides three highly configurable scripts to calculate waveform spectra in Python/ObsPyP. Although this package takes advantage of FDSN Web service client for ObsPy to retrieve necessary waveform data, but it also allows users to process waveform data from their local files. This package provides PSD file collections similar to popular PQLX package (McNamara and Boaz, 2005) and therefore it is compatible with existing user programs (see the Wiki page). The scripts included in this bundle are:
+The PDF/PSD bundle provides three highly configurable Python scripts to calculate waveform spectra in Python/ObsPyP. Although this package takes advantage of FDSN Web service client for ObsPy to retrieve necessary waveform data, but it also allows users to process waveform data from their local files. This package provides PSD file collections similar to popular PQLX package (McNamara and Boaz, 2005) and therefore it is compatible with existing user programs (see the Wiki page). The scripts included in this bundle are:
 
     - ntk_computePSD.py - a Python script to request waveforms and response data for given station(s) using the ObsPy FDSN client OR to read user's waveform data files (in SAC, MSEED, CSS, etc. format), compute PSDs and populate a file-based PSD database
     - ntk_extractPsdHour.py - a Python script to extract PSDs for a given channel and bounding parameters from the PSD database. The output is similar to PQLX's exPSDhour script
@@ -57,11 +66,17 @@ This bundle is composed of three Python scripts:
     - ntk_extractPolarHour.py – a Python script to extract polarization parameters for the given channels and bounding parameters
     - ntk_binPolarDay.py – a Python script to bin polarization attributes to daily files for a given channel tag and bounding parameters
     
- FILES:
+**CHANGES:**
 
-    PSD.CHANGES
-       - a text file containing the history of changes to the PDF/PSD bundle
-    ME.CHANGES
-       - a text file containing the history of changes to the ME bundle
-    POLAR.CHANGES
-       - a text file containing the history of changes to the POLAR bundle
+    PSD.CHANGES - history of changes to the PDF/PSD bundle
+    ME.CHANGES - history of changes to the ME bundle
+    POLAR.CHANGES - history of changes to the POLAR bundle
+
+**MORE INFORMATION:**
+
+See the Wiki pages at https://github.com/iris-edu/noise-toolkit/wiki
+ 
+ COMMENTS/QUESTIONS:
+
+    Please contact manoch@iris.washington.edu
+
