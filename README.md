@@ -1,16 +1,16 @@
  Incorporated Research Institutions for Seismology (IRIS)\
  Data Management Center (DMC)\
  Data Products Team\
- Noise Toolkit (NTK)\
+ Noise Toolkit (NTK)
 
- 2020-10-28
+ 2020-10-28\
  R.1.0 for Python 2.7
 
 ------------------------------------------------------------------------------------------------------------------------
 
 **NOTES:**
  
-This repository is the new home for the Noise Toolkit on seiscode (https://seiscode.iris.washington.edu/projects/iris-dmc-noise-toolkit):
+This repository is the new home for the following IRIS DMC Noise Toolkit data product bundles (previously hosted on seiscode.iris.washington.edu):
 
     - IRIS_NTK_PSD_scripts_0.9.5.tar.gz
     - IRIS_NTK_ME_scripts_0.6.0.tar.gz
@@ -22,16 +22,21 @@ This repository is the new home for the Noise Toolkit on seiscode (https://seisc
 The IRIS DMC Noise Toolkit data product is a collection of three open-source bundles that provide relatively simple 
 Python 2.7 /ObsPy code bundles to:
 
-    - compute power spectral density (PSD) of station waveform data using customized parameters (Noise Toolkit PDF/PSD bundle)
+    - compute power spectral density (PSD) of station waveform data using customized parameters (Noise Toolkit 
+      PDF/PSD bundle)
     - compute microseism energy from PSDs at different frequency bands (Noise Toolkit Microseism Energy bundle)
-    - perform frequency dependent polarization analysis of the waveform data (Noise Toolkit Polarization Analysis bundle)
+    - perform frequency dependent polarization analysis of the waveform data (Noise Toolkit Polarization 
+      Analysis bundle)
 
 **PDF/PSD bundle**
 
 The PDF/PSD bundle provides three highly configurable Python 2.7 scripts to calculate waveform spectra in Python/ObsPyP. Although this package takes advantage of FDSN Web service client for ObsPy to retrieve necessary waveform data, but it also allows users to process waveform data from their local files. This package provides PSD file collections similar to popular PQLX package (McNamara and Boaz, 2005) and therefore it is compatible with existing user programs (see the Wiki page). The scripts included in this bundle are:
 
-    - ntk_computePSD.py - a Python 2.7 script to request waveforms and response data for given station(s) using the ObsPy FDSN client OR to read user's waveform data files (in SAC, MSEED, CSS, etc. format), compute PSDs and populate a file-based PSD database
-    - ntk_extractPsdHour.py - a Python 2.7 script to extract PSDs for a given channel and bounding parameters from the PSD database. The output is similar to PQLX's exPSDhour script
+    - ntk_computePSD.py - a Python 2.7 script to request waveforms and response data for given station(s) using the 
+      ObsPy FDSN client OR to read user's waveform data files (in SAC, MSEED, CSS, etc. format), compute PSDs and 
+      populate a file-based PSD database
+    - ntk_extractPsdHour.py - a Python 2.7 script to extract PSDs for a given channel and bounding parameters from the 
+      PSD database. The output is similar to PQLX's exPSDhour script
     - ntk_binPsdDay.py - a Python 2.7 script to bin PSD's to daily files for a given channel and bounding parameters.
 
 **Microseism Energy (ME) bundle**
@@ -40,8 +45,10 @@ The PDF/PSD bundle provides three highly configurable Python 2.7 scripts to calc
  
  The scripts included in this bundle are:
 
-    - ntk_computePower.py – a Python 2.7 script to calculate power of each PSD window (by default 1 hour) over selected bin period bands
-    - ntk_medianPower.py – a Python 2.7 script to calculates median power from the PSD powers (by default hourly PSD power) using a sliding window of a given length (e.g., 12 hours)
+    - ntk_computePower.py – a Python 2.7 script to calculate power of each PSD window (by default 1 hour) over selected 
+      bin period bands
+    - ntk_medianPower.py – a Python 2.7 script to calculates median power from the PSD powers (by default hourly PSD 
+      power) using a sliding window of a given length (e.g., 12 hours)
     - ntk_plotPower.py – a Python 2.7 script to plot median powers computed from a series of PSD powers
 
 PSDs of seismic station waveform data needed for computation of the microseism energy are available from IRIS DMC via:
@@ -55,16 +62,20 @@ The Polarization bundle of the Noise Toolkit is based on the eigen-decomposition
 
     - degree of polarization (β^2) - a measure of the extent to which noise is organized
     - polarization azimuth (θH) - a horizontal direction parameter representing azimuth of the polarization ellipsoid
-    - polarization inclination (θV) - a vertical direction parameter representing inclination of the polarization ellipsoid
+    - polarization inclination (θV) - a vertical direction parameter representing inclination of the polarization 
+      ellipsoid
     - phase difference between components:
           o phase difference between the vertical and principal horizontal components (Φ VH)
           o phase difference between the horizontal components (Φ HH)
 
 This bundle is composed of three Python 2.7 scripts:
 
-    - ntk_computePolarization.py – an Python 2.7 script to calculate polarization parameters for a given station and time window
-    - ntk_extractPolarHour.py – a Python 2.7 script to extract polarization parameters for the given channels and bounding parameters
-    - ntk_binPolarDay.py – a Python 2.7 script to bin polarization attributes to daily files for a given channel tag and bounding parameters
+    - ntk_computePolarization.py – an Python 2.7 script to calculate polarization parameters for a given station and 
+      time window
+    - ntk_extractPolarHour.py – a Python 2.7 script to extract polarization parameters for the given channels and 
+      bounding parameters
+    - ntk_binPolarDay.py – a Python 2.7 script to bin polarization attributes to daily files for a given channel tag 
+      and bounding parameters
     
 **CHANGES:**
 
@@ -79,4 +90,5 @@ See the Wiki pages at https://github.com/iris-edu/noise-toolkit/wiki
  COMMENTS/QUESTIONS:
 
     Please contact manoch@iris.washington.edu
+
 
