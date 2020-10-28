@@ -1,0 +1,88 @@
+ ----------------------------------------------------------------------------------------------------------------------------------------
+  Incorporated Research Institutions for Seismology (IRIS)
+  Data Management Center (DMC)
+  Data Products Team
+  Noise Toolkit PDF/PSD scripts bundle
+ 
+  R 0.6.5 2017-01-18 
+ 
+ ----------------------------------------------------------------------------------------------------------------------------------------
+ 
+  Copyright (C) 2017  Product Team, IRIS Data Management Center 
+ 
+     This bundle is provided by the IRIS DMC Data Products Team WITHOUT ANY WARRANTY AND/OR SUPPORT
+ 
+     This is a free software; you can redistribute it and/or modify
+     it under the terms of the GNU Lesser General Public License as
+     published by the Free Software Foundation; either version 3 of the
+     License, or (at your option) any later version.
+     
+     This script is distributed in the hope that it will be useful, but
+     WITHOUT ANY WARRANTY; without even the implied warranty of
+     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+     Lesser General Public License (GNU-LGPL) for more details.  The
+     GNU-LGPL and further information can be found here:
+     http://www.gnu.org/
+ 
+     You should have received a copy of the GNU Affero General Public License
+     along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ 
+  DESCRIPTION:
+ 
+     This bundle contains a series of Python scripts to: 
+        - read waveforms for given network/station/location/channels from local files
+        - request/read waveforms for given network/station/location/channels using the obspy FDSN client
+        - compute and populate an hourly "Polarization database"
+        - extract PSDs and PDFs from the "Polarization database"
+ 
+ 
+  INSTALLATION:
+ 
+     see INSTALL.txt
+
+  RUNNING THE SCRIPTS:
+ 
+     see the bundle SeisCode Wiki page for instructions and examples:
+        https://seiscode.iris.washington.edu/projects/noise-toolkit-polarization-attributes-bundle/wiki
+
+  NOTES 
+ 
+     - for more information:
+         .visit data product's web page at:
+            http://ds.iris.edu/ds/products/noise-toolkit-polarization/
+         .visit data product's Wiki page at:
+            https://seiscode.iris.washington.edu/projects/noise-toolkit-polarization-attributes-bundle/wiki
+     - the "DeprecationWarning: Development and maintenance efforts will focus on the new obspy.fdsn client....." message
+       that you receive from the script is caused by script loading the IRIS module and should not affect the run
+ 
+ 
+  HISTORY
+ 
+     - 2017-01-18 R0.6.5: support for reading data and metadata from files only with no Internet requirement
+     - 2016-11-01 R0.6.0: added support for obtaining channel responses from local station XML response files by introducing the following two functions in tsLIB.py:
+                        getResponseInventory - to build a list of response inventories under a given met directory
+                        getResponseFromFile - to find response for a given Network, Station, Location cannel
+                        added respDirectory to common.py parameter file to disable looking for response files on local drives, set this parameter to None. Otherwise, set it to the response directory path
+     - 2016-01-25 R0.5.1: added user and password parameters to common.par and ntk_computePSD.py in support of restricted data access
+     - 2015-09-02 R0.5.0: ready for release
+     - 2015-06-16: updated based on the latest ntk_computePSD.py
+     - 2015-04-07: added check for all parameter values to inform user if they are not defined. Corrected the instrument correction for SAC files that would apply
+                        sensitivity in addition to instrument correction
+     - 2015-04-06: addressed the variable maximum period issue that was changing based on the smoothing window length
+     - 2015-04-02: based on feedback from Robert Anthony, in addition to nan values other non-numeric values may exist. The write that contains a flot() conversion
+                        is placed in a try block so we can catch any non-numeric conversion issue and report it as user-defined NAN
+     - 2015-03-30: added a check to number of samples to aviod log of zero (reported by Rob Anthony)
+     - 2015-03-17: added the "waterLevel" parameter to provide user with more control on how the ObsPy module shrinks values under water-level of max spec amplitude
+                        when removing the instrument response.
+     - 2015-02-24: introduced two new parameters (performInstrumentCorrection, applyScale) to allow user avoid instrument correction also now user can turn od decon. filter
+     - 2014-10-22: added support for Windows installation
+     - 2014-05-20: added some informative message about data retrieval
+                        changed format to output each channel to a separate directory and save files
+                        under DOY in preparation for PQLX-type output
+     - 2014-03-19: added option to read waveforms from file
+     - 2014-01-29: created as part of the Noise Toolkit product
+
+  COMMENTS/QUESTIONS:
+ 
+    Please contact manoch@iris.washington.edu
+ 

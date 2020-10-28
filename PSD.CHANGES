@@ -1,0 +1,19 @@
+R 0.9.5 2017-01-18 support for reading data and metadata from files only with no Internet requirement
+R 0.9.0 2016-11-01 added support for obtaining channel responses from local station XML response files by introducing the following two functions in tsLIB.py:
+                       getResponseInventory - to build a list of response inventories under a given met directory
+                       getResponseFromFile - to find response for a given Network, Station, Location cannel
+                       added respDirectory to common.py parameter file to disable looking for response files on local drives, set this parameter to None. Otherwise, set it to the response directory path
+R 0.8.2 2016-01-25 added polarization parameters to common.par and also made changes to some libraries in support of the polarization bundle
+                   added user and password parameters to common.par and ntk_computePSD.py in support of restricted data access
+R 0.8.1 2015-04-30 added powerDirectory and imageDirectory parameters to common.par in support of ME bundle.
+R 0.8.0 2015-04-07 added check for all parameter values to inform user if they are not defined. Corrected the instrument correction for SAC files that would apply
+                        sensitivity in addition to instrument correction
+        2015-04-06 addressed the variable maximum period issue that was changing based on the smoothing window length
+        2015-04-02 based on feedback from Robert Anthony, in addition to nan values other non-numeric values may exist. The write that contains a flot() conversion
+                   is placed in a try block so we can catch any non-numeric conversion issue and report it as user-defined NAN
+R 0.7.2 2015-03-30 added a check to number of samples to aviod log of zero (reported by Rob Anthony)
+R 0.7.1 2015-03-17 added the "waterLevel" parameter to provide user with more control on how the ObsPy module shrinks values under water-level of max spec amplitude 
+                   when removing the instrument response. 
+R 0.7.0 2015-02-24 introduced two new parameters (performInstrumentCorrection, applyScale) to allow user avoid instrument correction also now user can turn od decon. filter
+R 0.6.0 2014-10-22 supports Windows installation and moved data, param and bin directory from IRIS_NTK/PSD to IRIS_NTK in preparation for Microseism Energy bundle release
+R 0.5.0 2014-10-17 Beta release

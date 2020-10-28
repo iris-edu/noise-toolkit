@@ -1,0 +1,7 @@
+R 0.6.5 2017-01-18 support for reading data and metadata from files only with no Internet requirement
+R 0.6.0 2016-11-01 added support for obtaining channel responses from local station XML response files by introducing the following two functions in tsLIB.py:
+                       getResponseInventory - to build a list of response inventories under a given met directory
+                       getResponseFromFile - to find response for a given Network, Station, Location cannel
+                       added respDirectory to common.py parameter file to disable looking for response files on local drives, set this parameter to None. Otherwise, set it to the response directory path
+R 0.5.1 2016-01-25 added user and password parameters to common.par and ntk_computePSD.py in support of restricted data access
+R 0.5.0 2015-09-15 Beta release

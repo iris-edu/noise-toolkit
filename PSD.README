@@ -1,0 +1,90 @@
+ ----------------------------------------------------------------------------------------------------------------------------------------
+  Incorporated Research Institutions for Seismology (IRIS)
+  Data Management Center (DMC)
+  Data Products Team
+  Noise Toolkit PDF/PSD scripts bundle
+ 
+  R 0.9.5 2017-01-18 
+ 
+ ----------------------------------------------------------------------------------------------------------------------------------------
+ 
+  Copyright (C) 2017  Product Team, IRIS Data Management Center 
+ 
+     This bundle is provided by the IRIS DMC Data Products Team WITHOUT ANY WARRANTY AND/OR SUPPORT
+ 
+     This is a free software; you can redistribute it and/or modify
+     it under the terms of the GNU Lesser General Public License as
+     published by the Free Software Foundation; either version 3 of the
+     License, or (at your option) any later version.
+     
+     This script is distributed in the hope that it will be useful, but
+     WITHOUT ANY WARRANTY; without even the implied warranty of
+     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+     Lesser General Public License (GNU-LGPL) for more details.  The
+     GNU-LGPL and further information can be found here:
+     http://www.gnu.org/
+ 
+     You should have received a copy of the GNU Affero General Public License
+     along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ 
+  DESCRIPTION:
+ 
+     This bundle contains a series of Python scripts to: 
+        - read waveforms for given network/station/location/channels from local files
+        - request/read waveforms for given network/station/location/channels using the obspy FDSN client
+        - compute and populate an hourly "PSD database"
+        - extract PSDs and PDFs from the "PSD database"
+ 
+ 
+  INSTALLATION:
+ 
+     see INSTALL.txt
+
+  RUNNING THE SCRIPTS:
+ 
+     see the bundle SeisCode Wiki page for instructions and examples:
+        https://seiscode.iris.washington.edu/projects/noise-toolkit-pdf-psd-bundle/wiki
+
+  NOTES 
+ 
+     - for more information:
+         .visit data product's web page at:
+            http://ds.iris.edu/ds/products/noise-toolkit-pdf-psd/
+         .visit data product's Wiki page at:
+            https://seiscode.iris.washington.edu/projects/noise-toolkit-pdf-psd-bundle/wiki
+     - the "DeprecationWarning: Development and maintenance efforts will focus on the new obspy.fdsn client....." message
+       that you receive from the script is caused by script loading the IRIS module, as described below for the infrasound stations, and should not
+       affect the run
+ 
+ 
+  HISTORY
+ 
+      - 2017-01-18 R0.9.5: support for reading data and metadata from files only with no Internet requirement
+      - 2016-11-01 R0.9.0: added support for obtaining channel responses from local station XML response files by introducing the following two functions in tsLIB.py:
+                   getResponseInventory - to build a list of response inventories under a given met directory
+                   getResponseFromFile - to find response for a given Network, Station, Location cannel
+                   added respDirectory to common.py parameter file to disable looking for response files on local drives, set this parameter to None. Otherwise, set it to the response directory path
+     - 2016-01-25 R0.8.2: added polarization parameters to common.par and also made changes to some libraries in support of the polarization bundle
+                   added user and password parameters to common.par and ntk_computePSD.py in support of restricted data access
+     - 2015-04-30 R0.8.1: added powerDirectory and imageDirectory parameters to common.par in support of ME bundle.
+     - 2015-04-07 R0.8.0: now produces clear messages for missing parameters in the parameter file. Addresses reported maximum period values. Minor bugs and enhancements
+     - 2015-02-24 R0.7.0: introduced two new parameters (performInstrumentCorrection, applyScale) to allow user avoid instrument correction also now user can turn od decon. filter
+     - 2014-11-24 R0.6.2: documentation update and expansion of the common.py file to support Microseism Energy bundle
+     - 2014-10-16 R0.6.0: ntk_extractPsdHour.py output file name now includes the x-axis type
+     - 2014-10-01 R0.5.0: initial Beta release. Made the smoothing configureable, reorganized parameters for easier maintenance
+     - 2014-05-20 modified the output format to:
+         1. compute hourly PSDs and store them under the psdDb directory (this will be similar to PQLX’s database) as basis for script outputs
+         2. provide the extractPsdHourly.py script to extract PSD's for a given channel and bounding parameters. The output is similar to PQLX's exPSDhour script
+         3. provide the extractPdf.py that will extract PSDs to create (hourly and daily)  PDFs for a given channel and bounding parameters. 
+            The output is similar to the current PDF output from the PDF-PSD data product (http://ds.iris.edu/ds/products/pdf-psd/)
+ 
+            Users should be able to use the above outputs with their existing scripts that work with the PQLX and Quack outputs (hourly bin files have hour-minute
+            as the first column to avoid cross-reference to hour.bin file of Quack
+ 
+     - 2014-03-19: Added data file input option
+     - 2014-03-07: Initial Alpha release 
+  
+  COMMENTS/QUESTIONS:
+ 
+    Please contact manoch@iris.washington.edu
+ 

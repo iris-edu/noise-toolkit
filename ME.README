@@ -1,0 +1,69 @@
+ ----------------------------------------------------------------------------------------------------------------------------------------
+  Incorporated Research Institutions for Seismology (IRIS)
+  Data Management Center (DMC)
+  Data Products Team
+  Noise Toolkit Microseisms Energy (ME) scripts bundle
+ 
+  R 0.6.0 2015-04-30 
+ 
+ ----------------------------------------------------------------------------------------------------------------------------------------
+ 
+  Copyright (C) 2015  Product Team, IRIS Data Management Center 
+ 
+     This bundle is provided by the IRIS DMC Data Products Team WITHOUT ANY WARRANTY AND/OR SUPPORT
+ 
+     This is a free software; you can redistribute it and/or modify
+     it under the terms of the GNU Lesser General Public License as
+     published by the Free Software Foundation; either version 3 of the
+     License, or (at your option) any later version.
+     
+     This script is distributed in the hope that it will be useful, but
+     WITHOUT ANY WARRANTY; without even the implied warranty of
+     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+     Lesser General Public License (GNU-LGPL) for more details.  The
+     GNU-LGPL and further information can be found here:
+     http://www.gnu.org/
+ 
+     You should have received a copy of the GNU Affero General Public License
+     along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ 
+  DESCRIPTION:
+ 
+     This bundle contains 3 Python scripts to: 
+        - calculate power of each PSD window over selected bins (period bands)
+        - calculate median power for a given window length from the computed PSD powers
+        - plot temporal variation of the median power 
+ 
+  INSTALLATION:
+ 
+     see INSTALL.txt
+
+  RUNNING THE SCRIPTS:
+ 
+     See the bundle SeisCode Wiki page for instructions and examples:
+        https://seiscode.iris.washington.edu/projects/noise-toolkit-microseism-energy-me-bundle/wiki
+ 
+  INPUT DATA
+
+     The input PSD file should have the same format as:
+       - output of the Noise Toolkit ntk_extractPsdHour.py script (see NTK PSD/PDF bundle, https://seiscode.iris.washington.edu/projects/noise-toolkit-pdf-psd-bundle) 
+       or 
+       - PQLX's "exPSDhour script" (see http://pubs.usgs.gov/of/2010/1292/pdf/OF10-1292.pdf)
+
+  NOTES 
+ 
+     - for more information: 
+            . visit IRIS DMC Noise Toolkit Data Product web page at: http://ds.iris.edu/ds/products/noise-toolkit/
+            . visit product's Wiki page (https://seiscode.iris.washington.edu/projects/noise-toolkit-microseism-energy-me-bundle/wiki)
+ 
+  HISTORY
+ 
+     - 2015-04-30: R 0.6.0 release with more uniform output file names
+     - 2014-11-24: R 0.5.0 release compatible with the PDF/PSD bundle format
+     - 2014-03-19: Added data file input option
+     - 2014-03-07: Initial Alpha release 
+  
+  COMMENTS/QUESTIONS:
+ 
+    Please contact manoch@iris.washington.edu
+ 
