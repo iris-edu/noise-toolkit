@@ -9,7 +9,7 @@
 
  ----------------------------------------------------------------------------------------------------------------------------------------
 
-     - install Python on your computer
+     - install Python 2.7 on your computer
 
      - additional required Python modules are:
              . matplotlib
@@ -19,6 +19,5 @@
                https://github.com/obspy/obspy/wiki has detailed information on
                installing the latest stable version of ObsPy on various operating systems
 
-     - untar the bundle where you want to install  (installing all Noise
-       Toolkit bundles under the same directory is recommended)
+     - download the package to the destination directory
  

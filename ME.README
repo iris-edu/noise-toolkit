@@ -25,11 +25,11 @@
      http://www.gnu.org/
  
      You should have received a copy of the GNU Affero General Public License
-     along with this program.  If not, see <http://www.gnu.org/licenses/>.
+     along with this program.  If not, see http://www.gnu.org/licenses/.
  
   DESCRIPTION:
  
-     This bundle contains 3 Python scripts to: 
+     This bundle contains three Python 2.7 scripts to:
         - calculate power of each PSD window over selected bins (period bands)
         - calculate median power for a given window length from the computed PSD powers
         - plot temporal variation of the median power 
@@ -40,13 +40,13 @@
 
   RUNNING THE SCRIPTS:
  
-     See the bundle SeisCode Wiki page for instructions and examples:
-        https://seiscode.iris.washington.edu/projects/noise-toolkit-microseism-energy-me-bundle/wiki
+     See the bundle  Wiki page for instructions and examples:
+        https://github.com/iris-edu/noise-toolkit/wiki/Noise-Toolkit-Microseism-Energy-(ME)-bundle
  
   INPUT DATA
 
      The input PSD file should have the same format as:
-       - output of the Noise Toolkit ntk_extractPsdHour.py script (see NTK PSD/PDF bundle, https://seiscode.iris.washington.edu/projects/noise-toolkit-pdf-psd-bundle) 
+       - output of the Noise Toolkit ntk_extractPsdHour.py script (see NTK PSD/PDF bundle, https://github.com/iris-edu/noise-toolkit/wiki/Noise-Toolkit-PDF-PSD-bundle)
        or 
        - PQLX's "exPSDhour script" (see http://pubs.usgs.gov/of/2010/1292/pdf/OF10-1292.pdf)
 
@@ -54,7 +54,7 @@
  
      - for more information: 
             . visit IRIS DMC Noise Toolkit Data Product web page at: http://ds.iris.edu/ds/products/noise-toolkit/
-            . visit product's Wiki page (https://seiscode.iris.washington.edu/projects/noise-toolkit-microseism-energy-me-bundle/wiki)
+            . visit product's Wiki page (https://github.com/iris-edu/noise-toolkit/wiki/Noise-Toolkit-Microseism-Energy-(ME)-bundle)
  
   HISTORY
  

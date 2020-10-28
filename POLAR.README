@@ -29,7 +29,7 @@
  
   DESCRIPTION:
  
-     This bundle contains a series of Python scripts to: 
+     This bundle contains a series of Python 2.7 scripts to:
         - read waveforms for given network/station/location/channels from local files
         - request/read waveforms for given network/station/location/channels using the obspy FDSN client
         - compute and populate an hourly "Polarization database"
@@ -43,7 +43,7 @@
   RUNNING THE SCRIPTS:
  
      see the bundle SeisCode Wiki page for instructions and examples:
-        https://seiscode.iris.washington.edu/projects/noise-toolkit-polarization-attributes-bundle/wiki
+        https://github.com/iris-edu/noise-toolkit/wiki/Noise-Toolkit-Polarization-Attributes-bundle
 
   NOTES 
  
@@ -51,7 +51,7 @@
          .visit data product's web page at:
             http://ds.iris.edu/ds/products/noise-toolkit-polarization/
          .visit data product's Wiki page at:
-            https://seiscode.iris.washington.edu/projects/noise-toolkit-polarization-attributes-bundle/wiki
+            https://github.com/iris-edu/noise-toolkit/wiki/Noise-Toolkit-Polarization-Attributes-bundle
      - the "DeprecationWarning: Development and maintenance efforts will focus on the new obspy.fdsn client....." message
        that you receive from the script is caused by script loading the IRIS module and should not affect the run
  
