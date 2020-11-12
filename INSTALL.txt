@@ -1,23 +1,24 @@
- ----------------------------------------------------------------------------------------------------------------------------------------
+ -----------------------------------------------------------------------------------------------------------------------
   Incorporated Research Institutions for Seismology (IRIS)
   Data Management Center (DMC)
   Data Products Team
   Noise Toolkit 
   Python installation guide
 
-  2014-11-25       
+  V.2.0
+  2020-11-16
 
- ----------------------------------------------------------------------------------------------------------------------------------------
+ -----------------------------------------------------------------------------------------------------------------------
 
-     - install Python 2.7 on your computer
+     - install Python 3.8 or higher on your computer
 
      - additional required Python modules are:
-             . matplotlib
-             . numpy
-             . scipy
-             . obspy (needed for PDF/PSD bundle)
-               https://github.com/obspy/obspy/wiki has detailed information on
-               installing the latest stable version of ObsPy on various operating systems
+             . obspy 1.2.2
+             . matplotlib 3.3.3
+             . numpy 6.2
+             . scipy 1.5.3
+
 
      - download the package to the destination directory
+     - execute individual Python files under the bin directory without an argument. A usage message should be displayed.
  
