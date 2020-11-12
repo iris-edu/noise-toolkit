@@ -1,40 +1,21 @@
-################################################################################################
-#
-# run message
-#
-################################################################################################
-#
-def message(thisMessage):
-   print "********************** "+thisMessage+" **********************"
 
-################################################################################################
-#
-# error
-#
-################################################################################################
-#
-def error(message,code):
-   print "\n\n\n\n[ERROR] "+message+"\n\n"
-   return(code)
+def message(run_message):
+    """Post a run message."""
+    marker = 20 * '*'
+    print(f'\n{marker} {run_message} {marker}\n')
 
-################################################################################################
-#
-# warning
-#
-################################################################################################
-#
-def warning(sender,message):
-   print "[WARNING from "+sender+"] "+message
 
-################################################################################################
-#
-# get a variable from the parameter file by name
-#
-################################################################################################
-#
-def param(params,var):
-  if var in dir(params):
-    return params
-  code = error("variable '"+var+"' not in the parameter file",code=2)
-  import sys
-  sys.exit(code)
+def error(error_message, exit_code):
+    """Post an error message."""
+    print(f'[ERR] {error_message}\n')
+    return exit_code
+
+
+def info(info_message):
+    """Post a warning message."""
+    print(f'[INFO] {info_message}')
+
+
+def warning(warn_sender, warn_message):
+    """Post a warning message."""
+    print(f'[WARN] from {warn_sender}: {warn_message}')
