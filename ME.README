@@ -2,15 +2,15 @@
   Incorporated Research Institutions for Seismology (IRIS)
   Data Management Center (DMC)
   Data Products Team
-  Noise Toolkit Microseisms Energy (ME) scripts bundle
+  Noise Toolkit Microseisms Energy (ME) scripts package
  
-  R 0.6.0 2015-04-30 
+  V.2.0.0 2020-11-16
  
  ----------------------------------------------------------------------------------------------------------------------------------------
  
-  Copyright (C) 2015  Product Team, IRIS Data Management Center 
+  Copyright (C) 2020  Product Team, IRIS Data Management Center
  
-     This bundle is provided by the IRIS DMC Data Products Team WITHOUT ANY WARRANTY AND/OR SUPPORT
+     This package is provided by the IRIS DMC Data Products Team WITHOUT ANY WARRANTY AND/OR SUPPORT
  
      This is a free software; you can redistribute it and/or modify
      it under the terms of the GNU Lesser General Public License as
@@ -29,7 +29,7 @@
  
   DESCRIPTION:
  
-     This bundle contains three Python 2.7 scripts to:
+     This package contains three Python 3 scripts to:
         - calculate power of each PSD window over selected bins (period bands)
         - calculate median power for a given window length from the computed PSD powers
         - plot temporal variation of the median power 
@@ -39,27 +39,22 @@
      see INSTALL.txt
 
   RUNNING THE SCRIPTS:
- 
-     See the bundle  Wiki page for instructions and examples:
-        https://github.com/iris-edu/noise-toolkit/wiki/Noise-Toolkit-Microseism-Energy-(ME)-bundle
- 
-  INPUT DATA
 
-     The input PSD file should have the same format as:
-       - output of the Noise Toolkit ntk_extractPsdHour.py script (see NTK PSD/PDF bundle, https://github.com/iris-edu/noise-toolkit/wiki/Noise-Toolkit-PDF-PSD-bundle)
-       or 
-       - PQLX's "exPSDhour script" (see http://pubs.usgs.gov/of/2010/1292/pdf/OF10-1292.pdf)
+     See usage document for a particular script by executing it without any call arguments
+     See the package Wiki page for instructions and examples:
+        https://github.com/iris-edu/noise-toolkit/wiki/Noise-Toolkit-Microseism-Energy-(ME)-package
 
   NOTES 
  
      - for more information: 
             . visit IRIS DMC Noise Toolkit Data Product web page at: http://ds.iris.edu/ds/products/noise-toolkit/
-            . visit product's Wiki page (https://github.com/iris-edu/noise-toolkit/wiki/Noise-Toolkit-Microseism-Energy-(ME)-bundle)
+            . visit product's Wiki page (https://github.com/iris-edu/noise-toolkit/wiki/Noise-Toolkit-Microseism-Energy-(ME)-package)
  
   HISTORY
- 
+
+     - 2016-11-16: V.2.0.0 Python 3 and adoption of PEP 8 style guide
      - 2015-04-30: R 0.6.0 release with more uniform output file names
-     - 2014-11-24: R 0.5.0 release compatible with the PDF/PSD bundle format
+     - 2014-11-24: R 0.5.0 release compatible with the PDF/PSD package format
      - 2014-03-19: Added data file input option
      - 2014-03-07: Initial Alpha release 
   
