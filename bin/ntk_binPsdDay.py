@@ -1,307 +1,270 @@
-version = "R 0.8.0"
+#!/usr/bin/env python
 
-################################################################################################
-#
-# outout usage message
-#
-################################################################################################
-#
-def usage():
-   print "\n\nUSAGE for version: %s\n\n"%(version)
-   print "                                        configuration file name          net    sta      loc      chan    start date      end date-time[exclusive]     x-axis type  verbose on/off"
-   print "                                                       |                  |      |        |        |           |                      |                       |                 |"
-   print "                   python ntk_binPsdDay.py    param=binPsdDay        net=NM sta=SLM loc=DASH chan=BHZ start=2009-01-01          end=2009-01-06         type=period         mode=0"
-   print "\n\n\n\n"
-
-################################################################################################
-#
-# get run arguments
-#
-################################################################################################
-#
-def getArgs(argList):
-   args = {}
-   for i in xrange(1,len(argList)):
-      key,value = argList[i].split('=')
-      args[key] = value
-   return args
-
-################################################################################################
-#
-# get a run argument for the given key
-#
-################################################################################################
-#
-def getParam(args,key,msgLib,value):
-   if key in args.keys():
-      return args[key]
-   elif value is not None:
-      return value
-   else:
-      msgLib.error("missing parameter "+key,1)
-      usage()
-      sys.exit()
-
-################################################################################################
-#
-# Main
-#
-################################################################################################
-#
-# NAME: # ntk_binPsdDay.py - a Python script to bin PSD's to daily files for a given channel and bounding
-#                     parameters. The output is similar to those available from IRIS PDF/PSD Bulk Data 
-#                     Delivery System (http://www.iris.edu/dms/products/pdf-psd/)
-#
-# Copyright (C) 2014  Product Team, IRIS Data Management Center
-#
-#    This is a free software; you can redistribute it and/or modify
-#    it under the terms of the GNU Lesser General Public License as
-#    published by the Free Software Foundation; either version 3 of the
-#    License, or (at your option) any later version.
-#
-#    This script is distributed in the hope that it will be useful, but
-#    WITHOUT ANY WARRANTY; without even the implied warranty of
-#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
-#    Lesser General Public License (GNU-LGPL) for more details.  The
-#    GNU-LGPL and further information can be found here:
-#    http://www.gnu.org/
-#
-#    You should have received a copy of the GNU Affero General Public License
-#    along with this program.  If not, see <http://www.gnu.org/licenses/>.
-#
-# INPUT:
-#
-# hourly PSD files
-#
-# HISTORY:
-#
-#    2014-10-22 Manoch: added support for Windows installation
-#    2013-05-19 IRIS DMC Product Team (MB): created 
-#
-################################################################################################
-#
-
-#
-# PACKAGES:
-#
-import glob,sys,re,os,math
-import numpy as np
+import sys
+import os
+import importlib
+import glob
 from obspy.core import UTCDateTime
 from datetime import date, timedelta as td
 
-#
-# import the Noise Toolkit libraries
-#
-libraryPath      = os.path.join(os.path.dirname(__file__), '..', 'lib')
-sys.path.append(libraryPath)
+# Import the Noise Toolkit libraries.
+ntk_directory = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 
-import msgLib as msgLib
-import fileLib as fileLib
-import staLib as staLib
+param_path = os.path.join(ntk_directory, 'param')
+lib_path = os.path.join(ntk_directory, 'lib')
 
-args = getArgs(sys.argv)
+sys.path.append(param_path)
+sys.path.append(lib_path)
 
-#
-# see if user has provided the run arguments
-#
-if len(args) < 9:
-   msgLib.error("missing argument(s)",1)
-   usage()
-   sys.exit()
+import msgLib as msg_lib
+import fileLib as file_lib
+import staLib  as sta_lib
+import utilsLib  as utils_lib
 
+"""
+ Name: ntk_bin_PsdDay.py - a Python 3 script to bin PSD's to daily files for a given channel and bounding parameter.
+
+ Copyright (C) 2020  Product Team, IRIS Data Management Center
+
+    This is a free software; you can redistribute it and/or modify
+    it under the terms of the GNU Lesser General Public License as
+    published by the Free Software Foundation; either version 3 of the
+    License, or (at your option) any later version.
+
+    This script is distributed in the hope that it will be useful, but
+    WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+    Lesser General Public License (GNU-LGPL) for more details.  The
+    GNU-LGPL and further information can be found here:
+    http://www.gnu.org/
+
+    You should have received a copy of the GNU Affero General Public License
+    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+ INPUT:
+
+hourly PSD files
+
+
+ HISTORY:
+
+    2020-11-16 Manoch: V.2.0.0 Python 3 and adoption of PEP 8 style guide.
+    2014-10-22 Manoch: added support for Windows installation
+    2013-05-19 IRIS DMC Product Team (MB): created 
+
+"""
+
+version = 'V.2.0.0'
 script = sys.argv[0]
+script = os.path.basename(script)
 
-#
-# import the user-provided parameter file
-#
-# os.path.dirname(__file__) gives the current directory
-#
-paramFile      =  getParam(args,'param',msgLib,None)
-import importlib
-
-#
-# check to see if param file exists
-#
-paramPath      = os.path.join(os.path.dirname(__file__), '..', 'param')
-if os.path.isfile(os.path.join(paramPath,paramFile+'.py')):
-   sys.path.append(os.path.join(os.path.dirname(__file__), '..', 'param'))
-   param = importlib.import_module(paramFile)
+# Initial mode settings.
+timing = False
+do_plot = False
+verbose = False
+mode_list = ['0', 'plot', 'time', 'verbose']
+default_param_file = 'binPsdDay'
+if os.path.isfile(os.path.join(param_path, f'{default_param_file}.py')):
+    param = importlib.import_module(default_param_file)
 else:
-   msgLib.error('bad parameter file name [' + paramFile + ']', 2)
-   usage()
-   sys.exit()
+    code = msg_lib.error(f'could not load the default parameter file  [param/{default_param_file}.py]', 2)
+    sys.exit(code)
 
-VERBOSE      = param.VERBOSE
 
-#
-# flag to run in verbose mode
-#
-VERBOSE  = 0
-arg = getParam(args,'mode',msgLib,'verbose')
-print "MODE",arg
-if arg == 'verbose':
-      msgLib.message("VERBOSE RUN")
-      VERBOSE   = 1
-      print "\n\n[INFO] script: %s" % script
-      print "[INFO] ARG#",len(sys.argv)
-      print "[INFO] ARGS",sys.argv
+def usage():
+    """ Usage message.
+   """
+    print(f'\n\n{script} version {version}\n\n'
+          f'A Python 3 script to bin PSDs to daily files for a given channel and bounding parameters. '
+          f'\n\nUsage:\n\t{script} to display the usage message (this message)'
+          f'\n\t  OR'
+          f'\n\t{script} param=FileName net=network sta=station loc=location chan=channel(s)'
+          f' start=YYYY-MM-DDTHH:MM:SS end=YYYY-MM-DDTHH:MM:SS xtype=[period|frequency] verbose=[0|1]\n'
+          f'\n\twhere:'
+          f'\n\t  param\t\t[default: {default_param_file}] the configuration file name '
+          f'\n\t  net\t\t[required] network code'
+          f'\n\t  sta\t\t[required] station code'
+          f'\n\t  loc\t\t[required] location ID'
+          f'\n\t  chan\t\t[required] channel ID '
+          f'\n\t  xtype\t\t[required] X-axis type for output (period or '
+          f'frequency)'
+          f'\n\t  start\t\t[required] start date-time (UTC) of the binning interval '
+          f'(format YYYY-MM-DDTHH:MM:SS)'
+          f'\n\t  end\t\t[required] end date-time (UTC) of the binning interval '
+          f'(format YYYY-MM-DDTHH:MM:SS)'
+          f'\n\t  verbose\t[0 or 1, default: {param.verbose}] to run in verbose mode set to 1'
+          f'\n\nOutput format for the daily files: '
+          f'\n\n\tX-value (period/frequency) Power number of hits with values separated using the "separator" character '
+          f'specified in the parameter file.'
+          f'\n\nOutput format for the hourly files: '
+          f'\n\n\thour X-value (period/frequency) Power with values separated using the "separator" character '
+          f'specified in the parameter file.'
+          f'\n\nOutput: '
+          f'\n\tFull paths to the daily and hourly output data files are provided at the end of the run. '
+          f'You may turn off hourly file output via the configuration file.'
+          f'\n\n\tThe daily and hourly output file names have the following form respectively:'
+          f'\n\t\tD???.bin and H???.bin (??? represents 3-digit day of the year)'
+          f'\n\tfor example:'
+          f'\n\t\tD227.bin and H227.bin'
+          f'\n\nExamples:'
+          f'\n\n\t- usage:'
+          f'\n\tpython {script}'
+          f'\n\n\t- Assuming that you already have tried the following ntk_compute_PSD.py example:'
+          f'\n\tpython ntk_computePSD.py net=TA sta=O18A loc=DASH start=2008-08-14T12:00:00 end=2008-08-14T13:30:00'
+          f'\n\n\tyou can perform binning via:'
+          f'\n\tpython {script} net=TA sta=O18A loc=DASH chan=BHZ start=2008-08-14T12:00:00 end=2008-08-14T13:30:00 '
+          f'xtype=period '
+          f'\n\n\n\n')
 
-#
-# RUN ARGUMENTS:
-#
-network     = getParam(args,'net',msgLib,None)
-station     = getParam(args,'sta',msgLib,None)
-location    = staLib.getLocation(getParam(args,'loc',msgLib,None))
-channel     = getParam(args,'chan',msgLib,None)
-if len(channel) <3:
-   channel += "*"
 
-#
-# PSD files are all HOURLY files with 50% overlap computed as part of the polarization product
-# date parameter of the hourly PSDs to start, it starts at hour 00:00:00
-#  - HOURLY files YYYY-MM-DD
-#
-dataDirectory    = param.dataDirectory 
-startDateTime    = getParam(args,'start',msgLib,None).split("T")[0] # we always want to start from the begining of the day, so we discard user hours, if any
-startDateTime   += "T00:00:00"
-tStart           = UTCDateTime(startDateTime)
-startYear        = tStart.strftime("%Y")
-startMonth       = tStart.strftime("%m")
-startDay         = tStart.strftime("%d")
-startDOY         = tStart.strftime("%j")
-endDateTime      = getParam(args,'end',msgLib,None).split("T")[0] # we always want to start from the begining of the day, so we discard user hours, if any
-endDateTime     += "T00:00:00" # endDateTime is included
-tEnd             = UTCDateTime(endDateTime)+86400
-endYear          = tEnd.strftime("%Y")
-endMonth         = tEnd.strftime("%m")
-endDay           = tEnd.strftime("%d")
-endDOY           = tEnd.strftime("%j")
-duration         = tEnd - tStart
+# Get the run arguments.
+args = utils_lib.get_args(sys.argv, usage)
+if not args:
+    usage()
+    sys.exit(0)
 
-dEnd             = date(int(endYear),int(endMonth),int(endDay))
-dStart           = date(int(startYear),int(startMonth),int(startDay))
-delta            = dEnd - dStart
-dataDaysList     = []
-for i in xrange(delta.days +1):
-   thisDay = dStart + td(days=i)
-   dataDaysList.append(thisDay.strftime("%Y/%j"))
+# Import the user-provided parameter file. The parameter file is under the param directory at the same level
+# as the script directory.
+param_file = utils_lib.get_param(args, 'param', default_param_file, usage)
 
-if duration <=0 or len(dataDaysList) <= 0:
-   msgLib.error('bad start/end times [' + startDateTime + ', ' + endDateTime + ']', 2)
-   usage()
-   sys.exit()
+if param_file is None:
+    usage()
+    code = msg_lib.error(f' parameter file is required', 2)
+    sys.exit(code)
 
-xType       = getParam(args,'type',msgLib,None)
+# Import the parameter file if it exists.
+if os.path.isfile(os.path.join(param_path, f'{param_file}.py')):
+    param = importlib.import_module(param_file)
+else:
+    usage()
+    code = msg_lib.error(f'bad parameter file name [{param_file}]', 2)
+    sys.exit(code)
 
-#####################################
-# find and start reading the PSD files 
-#####################################
-#
+network = utils_lib.get_param(args, 'net', None, usage)
+station = utils_lib.get_param(args, 'sta', None, usage)
+location = sta_lib.get_location(utils_lib.get_param(args, 'loc', None, usage))
+channel = utils_lib.get_param(args, 'chan', None, usage)
+xtype = utils_lib.get_param(args, 'xtype', None, usage)
+
+"""
+ PSD files are all HOURLY files with 50% overlap computed as part of the polarization product
+ date parameter of the hourly PSDs to start, it starts at hour 00:00:00
+  - HOURLY files YYYY-MM-DD
+"""
+
+# Specific start and end date and times from user.
+# We always want to start from the beginning of the day, so we discard user hours, if any.
+start_date_time = utils_lib.get_param(args, 'start', None, usage)
+start_date_time = start_date_time.split('T')[0]
+start_year, start_month, start_day = start_date_time.split('-')
+start_datetime = UTCDateTime(start_date_time)
+
+end_date_time = utils_lib.get_param(args, 'end', None, usage)
+end_date_time = end_date_time.split('T')[0]
+end_year, end_month, end_day = end_date_time.split('-')
+end_datetime = UTCDateTime(end_date_time) + 86400
+
+delta = date(int(end_year), int(end_month), int(end_day)) - \
+        date(int(start_year), int(start_month), int(start_day))
+
+data_day_list = list()
+for i in range(delta.days + 1):
+    this_day = start_datetime + td(days=i)
+    data_day_list.append(this_day.strftime("%Y/%j"))
+
+if len(data_day_list) <= 0:
+    usage()
+    msg_lib.error(f'Bad start/end times [{start_date_time}, {end_date_time}]', 2)
+    sys.exit()
+
+# Find PSD files and start reading them.
 # build the file tag for the PSD files to read, example:
 #     NM_SLM_--_BH_2009-01-06
-#
-psdDbDirTag, psdDbFileTag = fileLib.getDir(param.dataDirectory,param.psdDbDirectory,network,station,location,channel)
+psd_db_dir_tag, psd_db_file_tag = file_lib.get_dir(param.dataDirectory, param.psdDbDirectory, network,
+                                                   station, location, channel)
 
-print "\n[INFO] PSD DIR TAG: " + psdDbDirTag
-if VERBOSE:
-   print "\n[INFO] PSD FILE TAG: " + psdDbFileTag
+msg_lib.info(f'PSD DIR TAG: {psd_db_dir_tag}')
 
-#####################################
-# loop through the windows
-#####################################
-#
-for n in xrange(len(dataDaysList)):
-   print "\n[INFO] day ",dataDaysList[n]
-   Dfile = {}
-   Hfile = []
-   thisFile = os.path.join(psdDbDirTag, dataDaysList[n], psdDbFileTag+'*'+xType+'.txt')
-   if VERBOSE:
-      print "[INFO] Looking into:", thisFile 
-   thisFileList = sorted(glob.glob(thisFile))   
+# Loop through the windows.
+for n in range(len(data_day_list)):
+    msg_lib.info(f'day {data_day_list[n]}')
+    d_file = dict()
+    h_file = list()
+    this_file = os.path.join(psd_db_dir_tag, data_day_list[n], f'{psd_db_file_tag}*{xtype}.txt')
+    if verbose:
+        msg_lib.info(f'Looking into: {this_file}')
+    this_file_list = sorted(glob.glob(this_file))
 
-   if len(thisFileList)<=0:
-      msgLib.warning('Main','No files found!')
-      if VERBOSE:
-         print "skip"
-      continue
-   elif len(thisFileList)>1:
-      if VERBOSE:
-         print len(thisFileList), "files  found!"
-   #####################################
-   # found the file, open it and read it
-   #####################################
-   #
-   for thisPsdFile in thisFileList:
-      if VERBOSE >0 :
-         print "[INFO] PSD FILE: " ,thisPsdFile
+    if len(this_file_list) <= 0:
+        msg_lib.warning('Main', 'No files found!')
+        if verbose:
+            msg_lib.warning('Main', 'skip')
+        continue
+    elif len(this_file_list) > 1:
+        if verbose:
+            msg_lib.info(f'{len(this_file_list)} files found!')
 
-      thisFileTimeLabel = fileLib.getFileTimes(param.namingConvention,channel,thisPsdFile)
-      thisFileTime      = UTCDateTime(thisFileTimeLabel[0])
-      thisYear          = thisFileTime.strftime("%Y")   
-      thisHour          = thisFileTime.strftime("%H:%M")   
-      thisDOY           = thisFileTime.strftime("%j")   
-      if thisFileTime >= tStart and thisFileTime <= tEnd:
-         with open(thisPsdFile) as file:
-            if VERBOSE >0 :
-               print "OK, working on ..." + thisPsdFile
-   
-            #
-            # skip the header line
-            #
-            next(file)
+    # Found the file, open it and read it.
+    for this_psd_file in this_file_list:
+        if verbose > 0:
+            msg_lib.info(f'PSD FILE: {this_psd_file}')
 
-            #
-            # go through individual periods/frequencies
-            #
-            for line in file:
+        this_file_time_label = file_lib.get_file_times(param.namingConvention, channel, this_psd_file)
+        this_file_time = UTCDateTime(this_file_time_label[0])
+        this_year = this_file_time.strftime("%Y")
+        this_hour = this_file_time.strftime("%H:%M")
+        this_doy = this_file_time.strftime("%j")
+        if start_datetime <= this_file_time <= end_datetime:
+            with open(this_psd_file) as file:
+                if verbose > 0:
+                    msg_lib.info(f'working on ...{this_psd_file}')
 
-                #
-                # each row, split column values
-                #
-                X,V      = re.split('\s+',line.strip(' ').strip())
+                # Skip the Header line.
+                next(file)
 
-                #
-                # here we onver potential 'nan' values to user defined NAN
-                #
-                if V.upper() == 'NAN':
-                   thisLine = "%s%s%s%s%d" % (thisHour,param.separator,X,param.separator,param.intNan)
-                   key = X+":"+str(param.intNan)
-                else:
-                   thisLine = "%s%s%s%s%d" % (thisHour,param.separator,X,param.separator,int(round(float(V))))
-                   key = X+":"+str(int(round(float(V)))) 
-                Hfile.append(thisLine)
-                if key in Dfile.keys():
-                   Dfile[key] +=1
-                else:
-                   Dfile[key] =1
+                # Go through individual periods/frequencies.
+                for line in file:
+                    # Each row, split column values.
+                    X, V = (line.strip()).split()
 
-         file.close()
+                    # Here we change the potential 'nan' values to user defined NAN.
+                    if V.upper() == 'NAN':
+                        this_line = f'{this_hour}{param.separator}{X}{param.separator}{param.intNan}'
+                        key = f'{X}:{param.intNan}'
+                    else:
+                        this_line = f'{this_hour}{param.separator}{X}{param.separator}{int(round(float(V)))}'
+                        key = f'{X}:{int(round(float(V)))}'
+                    h_file.append(this_line)
+                    if key in d_file.keys():
+                        d_file[key] += 1
+                    else:
+                        d_file[key] = 1
 
-   #####################################
-   # open the output file
-   #####################################
-   #
-   pdfDirTag, pdfFileTag = fileLib.getDir(param.dataDirectory,param.pdfDirectory,network,station,location,channel)
-   fileLib.makePath(pdfDirTag)
-   thisPath = os.path.join(pdfDirTag,'Y'+thisYear)
-   fileLib.makePath(thisPath)
-   outputFile = os.path.join(thisPath,'D' + thisDOY + '.bin')
-   print "[INFO] DAILY OUTPUT FILE: " + outputFile
-   with open(outputFile, 'w') as outputFile:
-      for key in sorted(Dfile.keys()):
-         day,db = key.split(":") 
-         outputFile.write("%s%s%s%s%i\n" % (day,param.separator,db,param.separator,Dfile[key]))
-   outputFile.close()
+            file.close()
 
-   if param.pdfHourlySave > 0:
-      thisPath = os.path.join(thisPath,param.pdfHourlyDirectory)
-      fileLib.makePath(thisPath)
-      outputFile = os.path.join(thisPath,'H' + thisDOY + '.bin')
-      print "[INFO] HOURLY OUTPUT FILE: " + outputFile
-      with open(outputFile, 'w') as outputFile:
-         for i in xrange(len(Hfile)):
-            outputFile.write("%s\n"%Hfile[i])
-      outputFile.close()
-   else:
-     print "[INFO] hourly PSD save option turned off"
-   
+    # Open the output file.
+    pdf_dir_tag, pdf_file_tag = file_lib.get_dir(param.dataDirectory, param.pdfDirectory, network,
+                                                 station, location, channel)
+    file_lib.make_path(pdf_dir_tag)
+    this_path = os.path.join(pdf_dir_tag, f'Y{this_year}')
+    file_lib.make_path(this_path)
+    output_file = os.path.join(this_path, f'D{this_doy}.bin')
+    msg_lib.info(f'DAILY OUTPUT FILE: {output_file}')
+    with open(output_file, 'w') as output_file:
+        for key in sorted(d_file.keys()):
+            day, db = key.split(':')
+            output_file.write(f'{day}{param.separator}{db}{param.separator}{d_file[key]}\n')
+    output_file.close()
+
+    if param.pdfHourlySave > 0:
+        this_path = os.path.join(this_path, param.pdfHourlyDirectory)
+        file_lib.make_path(this_path)
+        output_file = os.path.join(this_path, f'H{this_doy}.bin')
+        msg_lib.info(f'HOURLY OUTPUT FILE: {output_file}')
+        with open(output_file, 'w') as output_file:
+            for i in range(len(h_file)):
+                output_file.write(f'{h_file[i]}\n')
+        output_file.close()
+    else:
+        output_file.write(f'Hourly PSD save option turned off')
+

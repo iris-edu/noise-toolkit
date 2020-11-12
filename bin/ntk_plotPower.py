@@ -1,400 +1,385 @@
-version = "R 0.6.0"
-################################################################################################
-#
-# outout usage message
-#
-################################################################################################
-#
-def usage():
-   print "\n\nUSAGE("+version+"):\n\n"
-   print "ntk_plotPower.py - a Python script to plot median power obtained from "
-   print "the median power file produced by ntk_medianPower.py\n\n"
-   print "                               configuration  net   station     loc     chan     start date time     end date time            smoothing window (hours)"
-   print "                                    file       |      |          |       |           |                      |                       |                 bin to process(name as defined in the parameter file)"
-   print "                                     |         |      |          |       |           |                      |                       |                       |     "
-   print "                                     |         |      |          |       |           |                      |                       |                       |       maximum value for the y-axis"
-   print "                                     |         |      |          |       |           |                      |                       |  input median PSD power file  |     "
-   print "                                     |         |      |          |       |           |                      |                       |           |           |       |      | verbose mode on/off (0 or verbose)"
-   print "   python ntk_plotPower.py param=plotPower net=NM sta=SLM  loc=DASH chan=BHZ start=2009-03-01T00:00:00 end=2009-03-31T00:00:00  win=12  file=fileName   bin=SM ymax=3 mode=0"
-   print "  "
-   print "   INPUT:"
-   print "  "
-   print "   The PSD median power file created by ntk_medianPower.py "
-   print "   "
-   print "   The output windowed PDFs are stored under the "
-   print "   corresponding window directory as follows:"
-   print "  "
-   print "   Win(h)     Dir"
-   print "     6    ->  6h"
-   print "    12    -> 12h"
-   print "    24    ->  1d"
-   print "    96    ->  4d"
-   print "   384    -> 16d"
-   print "  "
-   print "  "
-   print " period range index:" 
-   print " Index    Period range"
-   print " 1        1-5 local microseism"
-   print " 2       5-10 secondary microseism "
-   print " 3      11-30 primary microseism"
-   print " 4     50-200 Earth hum"
-   print "\n\n\n\n"
+#!/usr/bin/env python
 
-################################################################################################
-#
-# get run arguments
-#
-################################################################################################
-#
-def getArgs(argList):
-   args = {}
-   for i in xrange(1,len(argList)):
-      key,value = argList[i].split('=')
-      args[key] = value
-   return args
+import sys
+import os
 
-################################################################################################
-#
-# get a run argument for the given key
-#
-################################################################################################
-#
-def getParam(args,key,msgLib,value):
-   if key in args.keys():
-      return args[key]
-   elif value is not None:
-      return value
-   else:
-      msgLib.error("missing parameter "+key,1)
-      usage()
-      sys.exit()
-
-################################################################################################
-#
-# NAME:
-#
-################################################################################################
-#
-# ntk_plotPower.py - a Python script to plot median power obtained from 
-#                   the median power file produced by ntk_medianPower.py
-#
-# Copyright (C) 2014  Product Team, IRIS Data Management Center
-#
-#    This is a free software; you can redistribute it and/or modify
-#    it under the terms of the GNU Lesser General Public License as
-#    published by the Free Software Foundation; either version 3 of the
-#    License, or (at your option) any later version.
-#
-#    This script is distributed in the hope that it will be useful, but
-#    WITHOUT ANY WARRANTY; without even the implied warranty of
-#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
-#    Lesser General Public License (GNU-LGPL) for more details.  The
-#    GNU-LGPL and further information can be found here:
-#    http://www.gnu.org/
-#
-#    You should have received a copy of the GNU Affero General Public License
-#    along with this program.  If not, see <http://www.gnu.org/licenses/>.
-#
-# HISTORY:
-#
-#    2015-02-20 Manoch: addressed the output file naming issue
-#    2014-11-24 Manoch: R0.5, modified the inpot format to read
-#               median power file produced by ntk_medianPower.py
-#    2013-10-07 Manoch: revision for production test
-#    2013-03-14 Manoch: created partially
-#
-#
-################################################################################################
-#
-
-#
-# PACKAGES:
-#
-from matplotlib.colors import LinearSegmentedColormap
-from obspy.core import UTCDateTime
-from matplotlib.dates import  DateFormatter, WeekdayLocator, HourLocator, \
-     YearLocator, MonthLocator, DayLocator, WeekdayLocator, MONDAY
-import matplotlib.cm as cm
-import glob,sys,re,os
-import numpy as np
-import matplotlib.pyplot as plt
 import datetime
 
-#
-# import the Noise Toolkit libraries
-#
-libraryPath      = os.path.join(os.path.dirname(__file__), '..', 'lib')
-sys.path.append(libraryPath)
-
-import msgLib  as msgLib
-import fileLib as fileLib
-import staLib  as staLib
-
-script = sys.argv[0]
-
-#
-# os.path.dirname(__file__) gives the current directory
-#
-args = getArgs(sys.argv)
-
-#
-# see if user has provided the run arguments
-#
-if len(args) < 11:
-   msgLib.error("missing argument(s)",1)
-   usage()
-   sys.exit()
-
-script = sys.argv[0]
-
-#
-# import the user-provided parameter file
-#
-# os.path.dirname(__file__) gives the current directory
-#
-paramFile      =  getParam(args,'param',msgLib,None)
 import importlib
-paramPath      = os.path.join(os.path.dirname(__file__), '..', 'param')
+from obspy.core import UTCDateTime
 
-#
-# check to see if param file exists
-#
-if os.path.isfile(os.path.join(paramPath,paramFile+".py")):
-   sys.path.append(os.path.join(os.path.dirname(__file__), '..', 'param'))
-   param = importlib.import_module(paramFile)
+import matplotlib.pyplot as plt
+
+from matplotlib.dates import DateFormatter, \
+    YearLocator, MonthLocator, DayLocator, WeekdayLocator, MONDAY
+
+# Import the Noise Toolkit libraries.
+library_path = os.path.join(os.path.dirname(__file__), '..', 'lib')
+sys.path.append(library_path)
+
+param_path = os.path.join(os.path.dirname(__file__), '..', 'param')
+sys.path.append(param_path)
+
+import msgLib as msg_lib
+import fileLib as file_lib
+import staLib as sta_lib
+import utilsLib as utils_lib
+import shared
+
+"""
+  ntk_plotPower.py - a Python 3 script to plot median power obtained from 
+                    the median power file produced by ntk_medianPower.py
+
+  Copyright (C) 2020  Product Team, IRIS Data Management Center
+
+     This is a free software; you can redistribute it and/or modify
+     it under the terms of the GNU Lesser General Public License as
+     published by the Free Software Foundation; either version 3 of the
+     License, or (at your option) any later version.
+
+     This script is distributed in the hope that it will be useful, but
+     WITHOUT ANY WARRANTY; without even the implied warranty of
+     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+     Lesser General Public License (GNU-LGPL) for more details.  The
+     GNU-LGPL and further information can be found here:
+     http://www.gnu.org/
+
+     You should have received a copy of the GNU Affero General Public License
+     along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+  HISTORY:
+     2020-11-16 Manoch: V.2.0.0 Python 3 and adoption of PEP 8 style guide.
+     2015-02-20 Manoch: addressed the output file naming issue
+     2014-11-24 Manoch: V.0.5, modified the inpot format to read
+                median power file produced by ntk_medianPower.py
+     2013-10-07 Manoch: revision for production test
+     2013-03-14 Manoch: created partially
+"""
+
+version = 'V.2.0.0'
+script = sys.argv[0]
+script = os.path.basename(script)
+
+# Initial mode settings.
+timing = False
+do_plot = False
+verbose = False
+mode_list = ['0', 'plot', 'time', 'verbose']
+default_param_file = 'plotPower'
+if os.path.isfile(os.path.join(param_path, f'{default_param_file}.py')):
+    param = importlib.import_module(default_param_file)
 else:
-   msgLib.error("bad parameter file name ["+paramFile+"]",2)
-   usage()
-   sys.exit()
+    code = msg_lib.error(f'could not load the default parameter file  [param/{default_param_file}.py]', 2)
+    sys.exit(code)
 
-#
-# VERBODE 
-#
-VERBOSE  = 0
-arg = getParam(args,'mode',msgLib,VERBOSE)
-print "MODE:",arg
-if arg == 'verbose':
-      msgLib.message("VERBOSE RUN")
-      VERBOSE        = True
+def usage():
+    """ Usage message.
+    """
+    print(f'\n\n{script} version {version}\n\n'
+          f'A Python 3 script to plot median power obtained from the median power file produced by '
+          f'ntk_medianPower.py.'
+          f'\n\nUsage:\n\t{script} to display the usage message (this message)'
+          f'\n\t  OR'
+          f'\n\t{script} param=FileName net=network sta=station loc=location chandir=channel _irectory'
+          f' start=YYYY-MM-DDTHH:MM:SS end=YYYY-MM-DDTHH:MM:SS xtype=[period|frequency] verbose=[0|1] '
+          f'xtype=[period|frequency]\n'
+          f'\n\tto perform extraction where:'
+          f'\n\t  param\t\t[default: {default_param_file}] the configuration file name '
+          f'\n\t  net\t\t[required] network code'
+          f'\n\t  sta\t\t[required] station code'
+          f'\n\t  loc\t\t[required] location ID'
+          f'\n\t  chan\t\t[required] channel ID'
+          f'\n\t  bin\t\t[required] bin to process(name as defined in the parameter file)'
+          f'\n\t  ymax\t\tmaximum value for the y-axis'
+          f'\n\t  file\t\t[reqiuired] the median PSD power file '
+          f'frequency for outputs and plots)'
+          f'\n\t  start\t\t[required] start date-time (UTC) for extraction '
+          f'(format YYYY-MM-DDTHH:MM:SS)'
+          f'\n\t  end\t\t[required] end date-time (UTC) for extraction '
+          f'(format YYYY-MM-DDTHH:MM:SS)'
+          f'\n\t  verbose\t[0 or 1, default: {param.verbose}] to run in verbose mode set to 1'
+          f'\n\n\t   INPUT:'
+          f'\n\n\t   The PSD median power file created by ntk_medianPower.py \n'
+          f'\n\n\t   The output windowed PDFs are stored under the corresponding window directory as follows:'
+          f'\n\n\t   Win(h)     Dir'
+          f'\n\n\t     6    ->  6h'
+          f'\n\n\t    12    -> 12h'
+          f'\n\n\t    24    ->  1d'
+          f'\n\n\t    96    ->  4d'
+          f'\n\n\t   384    -> 16d'
+          f'\n\n\t  '
+          f'\n\n\t period range index:'
+          f'\n\n\t Index    Period range'
+          f'\n\n\t 1        1-5 local microseism'
+          f'\n\n\t 2       5-10 secondary microseism '
+          f'\n\n\t 3      11-30 primary microseism'
+          f'\n\n\t 4     50-200 Earth hum'
+          f'\n\texamples:'
+          f'\n\t\tNM_SLM_--_BHE_2010-01-01T00:00:00.035645_3600_period.txt'
+          f'\n\nExamples:'
+          f'\n\n\t- usage:'
+          f'\n\tpython {script}'
+          f'\n\n\t- to plot power (note: the following example requires NM.SLM.--.BHZ.2009-03-01.2009-03-31.12h.txt as '
+          f'the input file. If this file '
+          f'does not exist):'
+          f'\n\t\t 1) Generate PSDs:'
+          f' \n\t\t\tpython ntk_computePSD.py param=computePSD net=NM sta=SLM  loc=DASH chan=BHZ '
+          f'start=2009-03-01T00:00:00 end=2009-03-31T00:00:00 xtype=period plot=0 verbose=0'
+          f'\n\t\t 2) Combine PSD files using the ntk_extractPsdHour.py script and note the output file name:'
+          f' \n\t\t\tpython ntk_extractPsdHour.py net=NM sta=SLM loc=DASH chan=BHZ '
+          f'start=2009-03-01T00:00:00 end=2009-03-31T00:00:00 xtype=period verbose=0'
+          f'\n\t\t 3) Compute power using the combined PSD file generated at step 2 above:'
+          f' \n\t\t\tpython ntk_computePower.py net=NM sta=SLM loc=DASH chan=BHZ '
+          f'start=2009-03-01T00:00:00 end=2009-03-31T00:00:00 xtype=period '
+          f'file=NM.SLM.--.BHZ.2009-03-01.2009-03-31.period.txt verbose=0'  
+          f'\n\t\t 4) Compute 12-hour median power using the power file generated at step 3 above:'
+          f' \n\t\t\tpython ntk_medianPower.py param=medianPower net=NM sta=SLM loc=DASH chan=BHZ '
+          f'start=2009-03-01T00:00:00 end=2009-03-31T00:00:00 xtype=period win=12 '
+          f'file=NM.SLM.--.BHZ.2009-03-01.2009-03-31.txt verbose=0'  
+          f'\n\n\tNow, plot the Secondary Microseism, SM :'
+          f'\n\t\tpython {script} param={default_param_file} param=plotPower net=NM sta=SLM loc=DASH chan=BHZ '
+          f'start=2009-03-01T00:00:00 end=2009-03-31T00:00:00 win=12 bin=SM ymax=3 '
+          f'file=NM.SLM.--.BHZ.2009-03-01.2009-03-31.12h.txt ymax=0.06 bin=SM'
+          f'\n\n\n\n')
 
-if VERBOSE:
-   print "\n\n[INFO] script: %s" % script
-   print "[INFO] ARG#",len(sys.argv)
-   print "[INFO] ARGS",sys.argv
 
+# See if user has provided the run arguments.
+args = utils_lib.get_args(sys.argv, usage)
 
-#
-# set parameters for the time axis labeling
-#
-years         = YearLocator()  # every year
-months        = MonthLocator() # every month
-days          = DayLocator()   # every day
-weeks         = WeekdayLocator(byweekday=MONDAY, interval=1)
-yearsFmt      = DateFormatter('%Y')
-monthsFmt     = DateFormatter('%m/%Y')
-daysFmt       = DateFormatter('%m/%d')
+param_file = utils_lib.get_param(args, 'param', default_param_file, usage)
 
-#
-# read the parameters from the configuration file
-#
-columnTag     = param.columnTag
-columnLabel   = param.columnLabel
-dotColor      = param.dotColor
-dotSize       = param.dotSize
+# Check and see if the param file exists.
+if os.path.isfile(os.path.join(param_path, param_file + ".py")):
+    sys.path.append(os.path.join(os.path.dirname(__file__), '..', 'param'))
+    param = importlib.import_module(param_file)
+else:
+    msg_lib.error(f'bad parameter file name {param_file}', 2)
+    usage()
+    sys.exit()
 
-network       = getParam(args,'net',msgLib,None)
-station       = getParam(args,'sta',msgLib,None)
-if VERBOSE:
-   print "NET: ",network
-   print "STA: ",station
+verbose = utils_lib.get_param(args, 'verbose', False, usage)
 
-location         = staLib.getLocation(getParam(args,'loc',msgLib,None))
-channel          = getParam(args,'chan',msgLib,None)
-start            = getParam(args,'start',msgLib,None)
-end              = getParam(args,'end',msgLib,None)
-windowWidthHour  = getParam(args,'win',msgLib,None)
-ymax             = getParam(args,'ymax',msgLib,None)
+if verbose:
+    msg_lib.info(f'script: {script} {len(sys.argv) - 1} args: {sys.argv}')
 
-#
-# moving window length in hours
+if len(sys.argv) < 9:
+    code = msg_lib.error('not enough argument(s)', 1)
+    usage()
+    sys.exit(code)
+
+# The run arguments.
+network = utils_lib.get_param(args, 'net', None, usage)
+station = utils_lib.get_param(args, 'sta', None, usage)
+location = sta_lib.get_location(utils_lib.get_param(args, 'loc', None, usage))
+
+# Set parameters for the time axis labeling.
+# Every year.
+years = YearLocator()
+# Every month.
+months = MonthLocator()
+# Every day.
+days = DayLocator()
+weeks = WeekdayLocator(byweekday=MONDAY, interval=1)
+yearsFmt = DateFormatter('%Y')
+monthsFmt = DateFormatter('%m/%Y')
+daysFmt = DateFormatter('%m/%d')
+
+# Read the parameters from the configuration file.
+columnTag = param.columnTag
+columnLabel = param.columnLabel
+dotColor = param.dotColor
+dotSize = param.dotSize
+
+network = utils_lib.get_param(args, 'net', None, usage)
+station = utils_lib.get_param(args, 'sta', None, usage)
+if verbose:
+    msg_lib.info(f'NET: {network}  STA: {station}')
+
+location = sta_lib.get_location(utils_lib.get_param(args, 'loc', None, usage))
+channel = utils_lib.get_param(args, 'chan', None, usage)
+start_date_time = utils_lib.get_param(args, 'start', None, usage)
+end_date_time = utils_lib.get_param(args, 'end', None, usage)
+
+# We always want to start_date_time from the beginning of the day, so we discard user hours, if any
+start_datetime, start_year, start_month, start_day, start_doy = utils_lib.time_info(start_date_time)
+
+# end_date_time is inclusive.
+end_datetime, end_year, end_month, end_day, end_doy = utils_lib.time_info(end_date_time)
+
+window_width_hour = utils_lib.get_param(args, 'win', None, usage)
+ymax = utils_lib.get_param(args, 'ymax', None, usage)
+
+# Moving window length in hours
 #  - 6hrs 1d(24h) 4d(96h) 16d(384h) ...
-#
-windowTag     = fileLib.getWindowTag(windowWidthHour)
-if VERBOSE:
-   print "WINDOW: "+windowWidthHour
+window_tag = file_lib.get_window_tag(window_width_hour)
+if verbose:
+    msg_lib.info(f'WINDOW {window_width_hour}')
 
-periodBin     = getParam(args,'bin',msgLib,None)
-if periodBin not in param.bins:
-  msgLib.error("bad bin name ["+periodBin+"]",2)
-  sys.exit()
+period_bin = utils_lib.get_param(args, 'bin', None, usage)
+if period_bin not in param.bins:
+    code = msg_lib.error(f'bad bin name [{period_bin}]', 2)
+    sys.exit(code)
 
-if VERBOSE:
-   print "PERIOD BIN: "+str(periodBin), 'from',param.binStart[periodBin],'to',param.binEnd[periodBin]
+if verbose:
+    msg_lib.info(f'PERIOD BIN {period_bin} from {param.binStart[period_bin]} to {param.binEnd[period_bin]}')
 
-binIndex      = param.binIndex[periodBin]
-rangeLabel    = param.rangeLabel[binIndex]
-factor        = param.factor[binIndex]
-factorLabel   = param.factorLabel[binIndex]
-ymin          = param.ymin[binIndex]
-yticks        = param.yticks[binIndex]
-ytickLabels   = param.ytickLabels[binIndex]
-imageTag      = param.imageTag[binIndex]
+binIndex = param.binIndex[period_bin]
+rangeLabel = param.rangeLabel[binIndex]
+factor = param.factor[binIndex]
+factorLabel = param.factorLabel[binIndex]
+ymin = param.ymin[binIndex]
+yticks = param.yticks[binIndex]
+ytickLabels = param.ytickLabels[binIndex]
+image_tag = param.imageTag[binIndex]
 
 yLabel = rangeLabel + factorLabel
 
-fileName     = getParam(args,'file',msgLib,None)
-startDate    = getParam(args,'start',msgLib,None)
-startYear    = int(startDate.split("-")[0])
-xStartL      = startDate.split('T')[0]
-startDate    = UTCDateTime(startDate)
+file_name = utils_lib.get_param(args, 'file', None, usage)
+startYear = int(start_date_time.split("-")[0])
+xStartL = start_date_time.split('T')[0]
 
-endDate      = getParam(args,'end',msgLib,None)
-endYear      = int(endDate.split("-")[0])
-xEndL        = endDate.split('T')[0]
-endDate      = UTCDateTime(endDate)
+end_date_time = end_date_time
+endYear = int(end_date_time.split("-")[0])
+xEndL = end_date_time.split('T')[0]
 
-xminL       = datetime.datetime(int(xStartL.split('-')[0]),int(xStartL.split('-')[1]),int(xStartL.split('-')[2]),0,0,0)
-xmaxL       = datetime.datetime(int(xEndL.split('-')[0]),int(xEndL.split('-')[1]),int(xEndL.split('-')[2]),0,0,0)
+xminL = datetime.datetime(int(xStartL.split('-')[0]), int(xStartL.split('-')[1]), int(xStartL.split('-')[2]), 0, 0, 0)
+xmaxL = datetime.datetime(int(xEndL.split('-')[0]), int(xEndL.split('-')[1]), int(xEndL.split('-')[2]), 0, 0, 0)
 
-if VERBOSE:
-   print "START: ",startDate
-   print "END: ",endDate
-   print "YMAX: ",str(ymax)
+if verbose:
+    msg_lib.info(f'START: {start_date_time} END: {end_date_time}  YMAX: {ymax}')
 
-#
-# set the target for the Power directory. The associated window directory
+# Set the target for the Power directory. The associated window directory
 # is under the corresponding power directory also
-#
-powerFileTag        = []
-powerFilePath       = []
+power_file_tag = list()
+power_file_path = list()
 
-title = " ".join([fileLib.getTag(".",[network,station.replace(',','+'),location]),periodBin,"with",windowTag,"sliding window"])
+title = " ".join([file_lib.get_tag(".", [network, station.replace(',', '+'), location]),
+                  period_bin, "with", window_tag, "sliding window"])
 
-#
-# plot bg color
-#
-#bgColor = (0.98,0.34,0.98)
-bgColor = (1,1,1)
+# Plot bg color.
+bgColor = (1, 1, 1)
 
-#
-# start reading the PDF file
-#
-#
-# initialize the limits
-#
-X    = []
-Y    = []
-XLabel = []
-powerDirectory = os.path.join(param.dataDirectory,param.powerDirectory)
-fileName = os.path.join(powerDirectory,".".join([network,station,location]),channel,windowTag,fileName)
-with open(fileName) as file:
-  if VERBOSE:
-            print "OPENING: "+ fileName
+# Start_date_time reading the PDF file.
+# Initialize the limits.
+X = list()
+Y = list()
+XLabel = list()
+power_directory = os.path.join(param.dataDirectory, param.powerDirectory)
+file_name = os.path.join(power_directory, ".".join([network, station, location]), channel, window_tag, file_name)
+with open(file_name) as file:
+    if verbose:
+        msg_lib.info(f'OPENING: {file_name}')
 
-  #
-  # read the entire power file
-  #
-  lines    = file.readlines()
+    # Read the entire power file.
+    lines = file.readlines()
 
-  #
-  # find the last non-blank line
-  #
-  lineCount = len(lines)
-  for i in xrange(1,len(lines)):
-       line = lines[-i].strip()
-       if len(line) > 0:
-          lineCount = len(lines) -i +1
-          break
-  if VERBOSE:
-       print "INPUT:",lineCount,"lines"
+    # Find the last non-blank line.
+    line_count = len(lines)
+    for i in range(1, len(lines)):
+        line = lines[-i].strip()
+        if len(line) > 0:
+            line_count = len(lines) - i + 1
+            break
+    if verbose:
+        msg_lib.info(f'INPUT: {line_count} lines')
 
-  #
-  # get the time of each line and the power, skip headers
-  #
-  powerTime = []
-  for i in xrange(2,lineCount):
-      values   = re.split('\s+',lines[i].strip(' ').strip())
-      thisTime = UTCDateTime(values[0])
-      if thisTime >= startDate and thisTime <= endDate:
-         date , time = values[0].split('T')
-         dateValues = date.split('-')
-         timeValues = time.split(':')
-         X.append(datetime.datetime(int(dateValues[0]),int(dateValues[1]),int(dateValues[2]),int(timeValues[0]),int(timeValues[1])))
-         Y.append(float(values[binIndex])*factor) 
+    #
+    # get the time of each line and the power, skip headers
+    #
+    powerTime = list()
+    for i in range(2, line_count):
+        line = lines[i]
+        line = line.strip()
+        values = line.split()
+        this_time = UTCDateTime(values[0])
+        if start_date_time <= this_time <= end_date_time:
+            date, time = values[0].split('T')
+            dateValues = date.split('-')
+            timeValues = time.split(':')
+            X.append(datetime.datetime(int(dateValues[0]), int(dateValues[1]),
+                                       int(dateValues[2]), int(timeValues[0]), int(timeValues[1])))
+            Y.append(float(values[binIndex]) * factor)
 
+msg_lib.info(f'Maximum Y: {max(Y)}')
 if len(X) <= 1:
-   msgLib.error("No data found",2)
-   sys.exit()
+    code = msg_lib.error("No data found", 2)
+    sys.exit(code)
 
-#
-# convert the column XYZ data to grid for plotting
-#
-if VERBOSE:
-   print "PLOT SIZE:",param.plotSize
+# Convert the column XYZ data to grid for plotting.
+if verbose:
+    msg_lib.info(f'PLOT SIZE: {param.plotSize}')
+
+# The production label.
+production_date = datetime.datetime.utcnow().replace(microsecond=0).isoformat()
+production_label = f'{shared.production_label}'
+production_label = f'{production_label} {script} {version}'
+production_label = f'{production_label} {production_date} UTC'
+production_label = f'{production_label} doi:{shared.ntk_doi}'
+
 fig = plt.figure(figsize=param.plotSize)
+
+plabel_x, plabel_y = shared.production_label_position
 
 fig.set_facecolor('w')
 
-xStart  = datetime.datetime(int(xStartL.split('-')[0]),int(xStartL.split('-')[1]),int(xStartL.split('-')[2]),0,0,0) + datetime.timedelta(seconds=7200)
-xEnd    = datetime.datetime(int(xEndL.split('-')[0]),int(xEndL.split('-')[1]),int(xEndL.split('-')[2]),00,00,00) - datetime.timedelta(seconds=7200)
+xStart = datetime.datetime(int(xStartL.split('-')[0]), int(xStartL.split('-')[1]), int(xStartL.split('-')[2]), 0, 0, 0) \
+         + datetime.timedelta(seconds=7200)
+xEnd = datetime.datetime(int(xEndL.split('-')[0]), int(xEndL.split('-')[1]), int(xEndL.split('-')[2]), 00, 00, 00) \
+       - datetime.timedelta(seconds=7200)
 
-for i in xrange(0,1):
+for i in range(0, 1):
     ax = fig.add_subplot(1, 1, i + 1)
-    if VERBOSE:
-       print "DOT COLOR:",dotColor[i]
-    ax.scatter(X, Y, s=dotSize, marker='o', alpha=1.0, color=dotColor[i], label=columnLabel[i+1])
+    ax.text(plabel_x, -0.5 * plabel_y, production_label, horizontalalignment='left', fontsize=5, verticalalignment='top',
+            transform=ax.transAxes)
 
-    #
+    if verbose:
+        msg_lib.info(f'DOT COLOR: {dotColor[i]}')
+    ax.scatter(X, Y, s=dotSize[i], marker='o', alpha=1.0, color=dotColor[i], label=columnLabel[i + 1])
+
     # ".   " is added for proper spacing
-    #
-    ax.text(xStart, (0.9)*float(ymax), ".    "+".".join([network,station,channel]),  horizontalalignment='left', fontsize=10, weight='bold', color=dotColor[i])
+    ax.text(xStart, 0.9 * float(ymax), ".    " + ".".join([network, station, channel]),
+            horizontalalignment='left', fontsize=10, weight='bold', color=dotColor[i])
 
-    #
     # "   ." is added for proper spacing
-    #
-    #ax.text(xEnd, 0.9*float(ymax), columnLabel+' '+yLabel+"   .",  horizontalalignment='right', fontsize=10, weight='bold')
-    
-    ax.set_xticklabels([])
+
+    ax.set_xticklabels(list())
     ax.set_ylabel(yLabel, fontsize='small')
     plt.title(title)
-    plt.ylim(ymin,float(ymax))
-    plt.xlim(xminL,xmaxL)
+    plt.ylim(ymin, float(ymax))
+    plt.xlim(xminL, xmaxL)
 
-#
-# format the ticks for the date axis depending on the duration
-#
+# Format the ticks for the date axis depending on the duration.
 ax.xaxis_date()
-#daterange = int((UTCDateTime(endDate+"T00:00:00") - UTCDateTime(startDate+"T00:00:00"))/86400.0)
-daterange = 15
-if(daterange < 21 ):
-   ax.xaxis.set_major_locator(days)
-   ax.xaxis.set_major_formatter(daysFmt)
-elif(daterange < 45 ):
-   ax.xaxis.set_major_locator(weeks)
-   ax.xaxis.set_major_formatter(daysFmt)
-elif(daterange < 90):
-   ax.xaxis.set_major_locator(weeks)
-   ax.xaxis.set_major_formatter(monthsFmt)
-elif(daterange < 400):
-   ax.xaxis.set_major_locator(months)
-   ax.xaxis.set_major_formatter(monthsFmt)
+date_range = 15
+if date_range < 21:
+    ax.xaxis.set_major_locator(days)
+    ax.xaxis.set_major_formatter(daysFmt)
+elif date_range < 45:
+    ax.xaxis.set_major_locator(weeks)
+    ax.xaxis.set_major_formatter(daysFmt)
+elif date_range < 90:
+    ax.xaxis.set_major_locator(weeks)
+    ax.xaxis.set_major_formatter(monthsFmt)
+elif date_range < 400:
+    ax.xaxis.set_major_locator(months)
+    ax.xaxis.set_major_formatter(monthsFmt)
 else:
-   ax.xaxis.set_major_locator(years)
-   ax.xaxis.set_major_formatter(yearsFmt)
+    ax.xaxis.set_major_locator(years)
+    ax.xaxis.set_major_formatter(yearsFmt)
 
 #
 # rotate the x labels by 60 degrees
 #
 for xlab in ax.get_xticklabels():
-   xlab.set_rotation(60)
+    xlab.set_rotation(60)
 
 fig.subplots_adjust(top=0.95, right=0.95, bottom=0.2, hspace=0)
-imageDirectory = os.path.join(param.ntkDirectory,param.imageDirectory)
-fileLib.makePath(imageDirectory)
-imageFile = os.path.join(imageDirectory,"_".join([fileName.replace('.txt',''),imageTag,windowTag]))
-plt.savefig(imageFile+".eps",format="eps",dpi=300)
-print "image file:",imageFile+".eps"
-plt.savefig(imageFile+".png",format="png",dpi=150)
-print "image file:",imageFile+".png"
+image_directory = os.path.join(param.ntkDirectory, param.imageDirectory)
+file_lib.make_path(image_directory)
+image_file = os.path.join(image_directory, "_".join([file_name.replace('.txt', ''), image_tag, window_tag]))
+plt.savefig(f'{image_file}.eps', format="eps", dpi=300)
+msg_lib.info(f'image file: {image_file}.eps')
+plt.savefig(f'{image_file}.png', format="png", dpi=150)
+msg_lib.info(f'image file: {image_file}.png')
 plt.show()
 

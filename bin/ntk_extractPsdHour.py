@@ -1,288 +1,235 @@
-version = "R 0.8.0"
+#!/usr/bin/env python
 
-################################################################################################
-#
-# outout usage message
-#
-################################################################################################
-#
-def usage():
-   print "\n\nUSAGE for version: %s\n\n"%(version)
-   print "                                         configuration file name         net     sta      loc     channel startDateTime           endDateTime             x-axis type         0       run with minimum message output"
-   print "                                                         |               |       |        |        |         |                        |                         |             |  verbose run in verbose mode"
-   print "                                                         |               |       |        |        |         |                        |                         |             |"
-   print "                   python ntk_extractPsdHour.py param=extractPsdHour net=NM sta=SLM loc=DASH chan=BHZ start=2009-11-01T11:00:00 end=2009-11-06T00:00:00  type=period     mode=0"
-   print "\n\n\n\n"
-
-################################################################################################
-#
-# get run arguments
-#
-################################################################################################
-#
-def getArgs(argList):
-   args = {}
-   for i in xrange(1,len(argList)):
-      key,value = argList[i].split('=')
-      args[key] = value
-   return args
-
-################################################################################################
-#
-# get a run argument for the given key
-#
-################################################################################################
-#
-def getParam(args,key,msgLib,value):
-   if key in args.keys():
-      return args[key]
-   elif value is not None:
-      return value
-   else:
-      msgLib.error("missing parameter "+key,1)
-      usage()
-      sys.exit()
-
-################################################################################################
-#
-# Main
-#
-################################################################################################
-#
-# NAME: # ntk_extractPsdHour.py - a Python script to extract PSDs for a given channel and bounding
-#                     parameters. The output is similar to PQLX's exPSDhour script
-#
-# Copyright (C) 2014  Product Team, IRIS Data Management Center
-#
-#    This is a free software; you can redistribute it and/or modify
-#    it under the terms of the GNU Lesser General Public License as
-#    published by the Free Software Foundation; either version 3 of the
-#    License, or (at your option) any later version.
-#
-#    This script is distributed in the hope that it will be useful, but
-#    WITHOUT ANY WARRANTY; without even the implied warranty of
-#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
-#    Lesser General Public License (GNU-LGPL) for more details.  The
-#    GNU-LGPL and further information can be found here:
-#    http://www.gnu.org/
-#
-#    You should have received a copy of the GNU Affero General Public License
-#    along with this program.  If not, see <http://www.gnu.org/licenses/>.
-#
-# INPUT:
-#
-# hourly PSD files
-#
-# HISTORY:
-#
-#    2015-04-02 Manoch: based on feedback from Robert Anthony, in addition to nan values other
-#                       non-numeric values may exist. The write that contains a flot() conversion
-#                       is placed in a try block so we can catch any non-numeric conversion issue
-#                       and report it as user-defined NAN
-#    2014-10-22 Manoch: added support for Windows installation
-#    2014-10-06 IRIS DMC Product Team (MB): Beta release :
-#                                              output file name now includes the x-axis type
-#    2013-05-19 IRIS DMC Product Team (MB): created 
-#
-################################################################################################
-#
-
-#
-# PACKAGES:
-#
-import glob,sys,re,os,math
-import numpy as np
+import sys
+import os
+import importlib
+import glob
 from obspy.core import UTCDateTime
 from datetime import date, timedelta as td
 
-#
-# import the Noise Toolkit libraries
-#
-libraryPath      = os.path.join(os.path.dirname(__file__), '..', 'lib')
-sys.path.append(libraryPath)
+# Import the Noise Toolkit libraries.
+ntk_directory = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 
-import msgLib as msgLib
-import fileLib as fileLib
-import staLib as staLib
+param_path = os.path.join(ntk_directory, 'param')
+lib_path = os.path.join(ntk_directory, 'lib')
 
-args = getArgs(sys.argv)
+sys.path.append(param_path)
+sys.path.append(lib_path)
 
-#
-# see if user has provided the run arguments
-#
+import msgLib as msg_lib
+import fileLib as file_lib
+import staLib  as sta_lib
+import utilsLib as utils_lib
 
-if len(args) < 9:
-   msgLib.error("missing argument(s)",1)
-   usage()
-   sys.exit()
+"""
+  Name:   ntk_extractPsdHour.py - a Python 3 script to extract PSDs for a given channel and bounding
+                      parameters. The output is similar to PQLX's exPSDhour script
 
+  Copyright (C) 2020  Product Team, IRIS Data Management Center
+
+     This is a free software; you can redistribute it and/or modify
+     it under the terms of the GNU Lesser General Public License as
+     published by the Free Software Foundation; either version 3 of the
+     License, or (at your option) any later version.
+
+     This script is distributed in the hope that it will be useful, but
+     WITHOUT ANY WARRANTY; without even the implied warranty of
+     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+     Lesser General Public License (GNU-LGPL) for more details.  The
+     GNU-LGPL and further information can be found here:
+     http://www.gnu.org/
+
+     You should have received a copy of the GNU Affero General Public License
+     along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+  INPUT:
+
+  hourly PSD files
+
+  HISTORY:
+     2020-11-16 Manoch: V.2.0.0 Python 3 and adoption of PEP 8 style guide.
+     2015-04-02 Manoch: based on feedback from Robert Anthony, in addition to nan values other
+                        non-numeric values may exist. The write that contains a flot() conversion
+                        is placed in a try block so we can catch any non-numeric conversion issue
+                        and report it as user-defined NAN
+     2014-10-22 Manoch: added support for Windows installation
+     2014-10-06 IRIS DMC Product Team (MB): Beta release: output file name now includes the x-axis type
+     2013-05-19 IRIS DMC Product Team (MB): created 
+"""
+version = 'V.2.0.0'
 script = sys.argv[0]
+script = os.path.basename(script)
 
-#
-# import the user-provided parameter file
-#
-# os.path.dirname(__file__) gives the current directory
-#
-
-paramFile      =  getParam(args,'param',msgLib,None)
-import importlib
-
-#
-# check to see if param file exists
-#
-paramPath      = os.path.join(os.path.dirname(__file__), '..', 'param')
-if os.path.isfile(os.path.join(paramPath,paramFile+'.py')):
-   sys.path.append(os.path.join(os.path.dirname(__file__), '..', 'param'))
-   param = importlib.import_module(paramFile)
+# Initial mode settings.
+timing = False
+do_plot = False
+verbose = False
+mode_list = ['0', 'plot', 'time', 'verbose']
+default_param_file = 'extractPsdHour'
+if os.path.isfile(os.path.join(param_path, f'{default_param_file}.py')):
+    param = importlib.import_module(default_param_file)
 else:
-   msgLib.error('bad parameter file name [' + paramFile + ']', 2)
-   usage()
-   sys.exit()
+    code = msg_lib.error(f'could not load the default parameter file  [param/{default_param_file}.py]', 2)
+    sys.exit(code)
 
-VERBOSE      = param.VERBOSE
 
-#
-# flag to run in verbose mode
-#
-VERBOSE  = 0
-arg = getParam(args,'mode',msgLib,'verbose')
-print "MODE",arg
-if arg == 'verbose':
-      msgLib.message("VERBOSE RUN")
-      VERBOSE        = 1
-      print "\n\n[INFO] script: %s" % script
-      print "[INFO] ARG#",len(sys.argv)
-      print "[INFO] ARGS",sys.argv
+def usage():
+    """ Usage message.
+  """
+    print(f'\n\n{script} version {version}\n\n'
+          f'A Python 3 script to extract PSDs for a given channel and bounding parameters. '
+          f'The output is similar to the PQLX\'s exPSDhour script: '
+          f'\n\thttps://pubs.usgs.gov/of/2010/1292/pdf/OF10-1292.pdf. '
+          f'\n\nUsage:\n\t{script} to display the usage message (this message)'
+          f'\n\t  OR'
+          f'\n\t{script} param=FileName net=network sta=station loc=location chan=channel(s)'
+          f' start=YYYY-MM-DDTHH:MM:SS end=YYYY-MM-DDTHH:MM:SS xtype=[period|frequency] verbose=[0|1]\n'
+          f'\n\tto perform binning:'
+          f'\n\t  param\t\t[default: {default_param_file}] the configuration file name '
+          f'\n\t  net\t\t[required] network code'
+          f'\n\t  sta\t\t[required] station code'
+          f'\n\t  loc\t\t[required] location ID'
+          f'\n\t  chan\t\t[required] channel ID '
+          f'\n\t  xtype\t\t[required] X-axis type (period or '
+          f'frequency for output)'
+          f'\n\t  start\t\t[required] start date-time (UTC) of the interval for which PSDs to be computed '
+          f'(format YYYY-MM-DDTHH:MM:SS)'
+          f'\n\t  end\t\t[required] end date-time (UTC) of the interval for which PSDs to be computed '
+          f'(format YYYY-MM-DDTHH:MM:SS)'
+          f'\n\t  verbose\t[0 or 1, default: {param.verbose}] to run in verbose mode set to 1'
+          f'\n\nOutput format: '
+          f'\n\nDate Hour X-value (period/frequency) Power with values separated using the "separator" character '
+          f'specified in the parameter file.'
+          f'\n\nOutput file: '
+          f'\n\tFull path to the  output data file is provided at the end of the run. '
+          f'\n\n\tThe output file name has the form:'
+          f'\n\t\tnet.sta.loc.chan.start.end.xtype.txt'
+          f'\n\tfor example:'
+          f'\n\t\tTA.O18A.--.BHZ.2008-08-14.2008-08-14.period.txt'
+          f'\n\nExamples:'
+          f'\n\n\t- usage:'
+          f'\n\tpython {script}'
+          f'\n\n\t- Assuming that you already have tried the following ntk_compute_PSD.py example:'
+          f'\n\tpython ntk_computePSD.py net=TA sta=O18A loc=DASH start=2008-08-14T12:00:00 end=2008-08-14T13:30:00'
+          f'\n\n\tyou can perform PSD extraction via:'
+          f'\n\tpython {script} net=TA sta=O18A loc=DASH chan=BHZ start=2008-08-14T12:00:00 '
+          f'end=2008-08-14T12:30:00 xtype=period'
+          f'\n\n\n\n')
 
-#
-# RUN ARGUMENTS:
-#
-network     = getParam(args,'net',msgLib,None)
-station     = getParam(args,'sta',msgLib,None)
-location    = staLib.getLocation(getParam(args,'loc',msgLib,None))
-channel     = getParam(args,'chan',msgLib,None)
-if len(channel) <3:
-   channel += "*"
 
-#
-# PSD files are all HOURLY files with 50% overlap computed as part of the polarization product
-# date parameter of the hourly PSDs to start, it starts at hour 00:00:00
-#  - HOURLY files YYYY-MM-DD
-#
-dataDirectory    = param.dataDirectory 
-startDateTime    = getParam(args,'start',msgLib,None)
-tStart           = UTCDateTime(startDateTime)
-startYear        = tStart.strftime("%Y")
-startMonth       = tStart.strftime("%m")
-startDay         = tStart.strftime("%d")
-startDOY         = tStart.strftime("%j")
-endDateTime      = getParam(args,'end',msgLib,None)
-tEnd             = UTCDateTime(endDateTime)
-endYear          = tEnd.strftime("%Y")
-endMonth         = tEnd.strftime("%m")
-endDay           = tEnd.strftime("%d")
-endDOY           = tEnd.strftime("%j")
-duration         = tEnd - tStart
+# Get the run arguments.
+args = utils_lib.get_args(sys.argv, usage)
+if not args:
+    usage()
+    sys.exit(0)
 
-dEnd             = date(int(endYear),int(endMonth),int(endDay))
-dStart           = date(int(startYear),int(startMonth),int(startDay))
-delta            = dEnd - dStart
-dataDaysList     = []
-for i in xrange(delta.days +1):
-   thisDay = dStart + td(days=i)
-   dataDaysList.append(thisDay.strftime("%Y/%j"))
+# Import the user-provided parameter file. The parameter file is under the param directory at the same level
+# as the script directory.
+param_file = utils_lib.get_param(args, 'param', default_param_file, usage)
 
-if duration <=0 or len(dataDaysList) <= 0:
-   msgLib.error('bad start/end times [' + startDateTime + ', ' + endDateTime + ']', 2)
-   usage()
-   sys.exit()
+if param_file is None:
+    usage()
+    code = msg_lib.error(f' parameter file is required', 2)
+    sys.exit(code)
 
-xType            = getParam(args,'type',msgLib,None)
+# Import the parameter file if it exists.
+if os.path.isfile(os.path.join(param_path, f'{param_file}.py')):
+    param = importlib.import_module(param_file)
+else:
+    usage()
+    code = msg_lib.error(f'bad parameter file name [{param_file}]', 2)
+    sys.exit(code)
 
-#####################################
-# find and start reading the PSD files 
-#####################################
-#
-# build the file tag for the PSD files to read, example:
-#     NM_SLM_--_BH_2009-01-06
-#
-psdDbDirTag, psdDbFileTag = fileLib.getDir(param.dataDirectory,param.psdDbDirectory,network,station,location,channel)
+network = utils_lib.get_param(args, 'net', None, usage)
+station = utils_lib.get_param(args, 'sta', None, usage)
+location = sta_lib.get_location(utils_lib.get_param(args, 'loc', None, usage))
+channel = utils_lib.get_param(args, 'chan', None, usage)
+xtype = utils_lib.get_param(args, 'xtype', None, usage)
 
-print "\n[INFO] PSD DIR TAG: " + psdDbDirTag
-if VERBOSE >0 :
-   print "\n[INFO] PSD FILE TAG: " + psdDbFileTag
+# Specific start and end date and times from user.
+# We always want to start from the beginning of the day, so we discard user hours, if any.
+start_date_time = utils_lib.get_param(args, 'start', None, usage)
+start_date_time = start_date_time.split('T')[0]
+start_year, start_month, start_day = start_date_time.split('-')
+start_datetime = UTCDateTime(start_date_time)
 
-#####################################
-# open the output file
-#####################################
-#
-psdDirTag, psdFileTag = fileLib.getDir(param.dataDirectory,param.psdDirectory,network,station,location,channel)
-fileLib.makePath(psdDirTag)
-tagList               = [psdFileTag,startDateTime.split('.')[0],endDateTime.split('.')[0],xType]
-outputFileName        = fileLib.getFileName(param.namingConvention,psdDirTag,tagList)   
-#outputFileName = os.path.join(psdDirTag,'.'.join([psdFileTag,startDateTime.split('.')[0],endDateTime.split('.')[0]+'_'+xType+'.txt']))
-with open(outputFileName, 'w') as outputFile:
+end_date_time = utils_lib.get_param(args, 'end', None, usage)
+end_date_time = end_date_time.split('T')[0]
+end_year, end_month, end_day = end_date_time.split('-')
+end_datetime = UTCDateTime(end_date_time) + 86400
 
-   #####################################
-   # loop through the windows
-   #####################################
-   #
-   for n in xrange(len(dataDaysList)):
+delta = date(int(end_year), int(end_month), int(end_day)) - \
+        date(int(start_year), int(start_month), int(start_day))
 
-      thisFile = os.path.join(psdDbDirTag, dataDaysList[n], psdDbFileTag+'*'+xType+'.txt')
-      print "[INFO] Day:", dataDaysList[n] 
-      thisFileList = sorted(glob.glob(thisFile))   
-   
-      if len(thisFileList)<=0:
-         msgLib.warning('Main','No files found!')
-         if VERBOSE:
-            print "skip"
-         continue
-      elif len(thisFileList)>1:
-         if VERBOSE:
-            print len(thisFileList), "files  found!"
-      #####################################
-      # found the file, open it and read it
-      #####################################
-      #
-      for thisPsdFile in thisFileList:
-         if VERBOSE >0 :
-            print "[INFO] PSD FILE: " ,thisPsdFile
-         thisFileTimeLabel = fileLib.getFileTimes(param.namingConvention,channel,thisPsdFile)
-         thisFileTime      = UTCDateTime(thisFileTimeLabel[0])
-         if thisFileTime >= tStart and thisFileTime <= tEnd:
-            with open(thisPsdFile) as file:
-               if VERBOSE >0 :
-                  print "OK, working on ..." + thisPsdFile
+data_days_list = list()
+for i in range(delta.days + 1):
+    this_day = start_datetime + td(days=i)
+    data_days_list.append(this_day.strftime("%Y/%j"))
 
-               #
-               # skip the header line
-               #
-               next(file)
+""" Find and start reading the PSD files.
+    Build the file tag for the PSD files to read, example:
+      NM_SLM_--_BH_2009-01-06
+"""
+psd_db_dir_tag, psd_db_file_tag = file_lib.get_dir(param.dataDirectory, param.psdDbDirectory, network,
+                                                   station, location, channel)
 
-               #
-               # go through individual periods/frequencies
-               #
-               for line in file:
+msg_lib.info(f'PSD DIR TAG: {psd_db_dir_tag}')
+if verbose > 0:
+    msg_lib.info(f'PSD FILE TAG: {psd_db_file_tag}')
 
-                   #
-                   # each row, split column values
-                   #
-                   X,V = re.split('\s+',line.strip('.').strip())
+# Open the output file.
+psd_dir_tag, psd_file_tag = file_lib.get_dir(param.dataDirectory, param.psdDirectory, network,
+                                             station, location, channel)
+file_lib.make_path(psd_dir_tag)
+tag_list = [psd_file_tag, start_date_time.split('.')[0], end_date_time.split('.')[0], xtype]
+output_file_name = file_lib.get_file_name(param.namingConvention, psd_dir_tag, tag_list)
+with open(output_file_name, 'w') as output_file:
+    # Loop through the windows.
+    for n in range(len(data_days_list)):
 
-                   #
-                   # save the period/frequency and the value of interest
-                   #
-                   thisOutDate,thisOutTime = thisFileTimeLabel[0].split('T')
+        thisFile = os.path.join(psd_db_dir_tag, data_days_list[n], psd_db_file_tag + '*' + xtype + '.txt')
+        msg_lib.info(f'Day: {data_days_list[n]}')
+        this_file_list = sorted(glob.glob(thisFile))
 
-                   #
-                   # here we convert potential 'nan' and 'inf' (non-numeric) values to user defined NAN
-                   #
-                   try:
-                      outputFile.write("%s%s%s%s%s%s%d\n" % (thisOutDate,param.separator,thisOutTime.split('.')[0],param.separator,X,param.separator,round(float(V))))
-                   except: 
-                      outputFile.write("%s%s%s%s%s%s%d\n" % (thisOutDate,param.separator,thisOutTime.split('.')[0],param.separator,X,param.separator,param.intNan))
+        if len(this_file_list) <= 0:
+            msg_lib.warning('Main', 'No files found!')
+            if verbose:
+                msg_lib.info(f'skip')
+            continue
+        elif len(this_file_list) > 1:
+            if verbose:
+                msg_lib.info(f'{len(this_file_list)} files  found!')
 
-            file.close()
-print "\n[INFO] OUTPUT FILE: " + outputFileName
-outputFile.close()
+        # Found the file, open it and read it.
+        for this_psd_file in this_file_list:
+            if verbose > 0:
+                msg_lib.info(f'PSD FILE: {this_psd_file}')
+            this_file_time_label = file_lib.get_file_times(param.namingConvention, channel, this_psd_file)
+            this_file_time = UTCDateTime(this_file_time_label[0])
+            if start_datetime <= this_file_time <= end_datetime:
+                with open(this_psd_file) as file:
+                    if verbose > 0:
+                        msg_lib.info(f'working on ... {this_psd_file}')
+
+                    # Skip the header line.
+                    next(file)
+
+                    # Go through individual periods/frequencies.
+                    for line in file:
+                        # Each row, split column values.
+                        X, V = (line.strip()).split()
+
+                        # Save the period/frequency and the value of interest.
+                        this_out_date, this_out_time = this_file_time_label[0].split('T')
+
+                        # Here we convert potential 'nan' and 'inf' (non-numeric) values to user defined NAN.
+                        try:
+                            output_file.write(f'{this_out_date}{param.separator}{this_out_time.split(".")[0]}'
+                                              f'{param.separator}{X}{param.separator}{round(float(V))}\n')
+                        except Exception as ex:
+                            output_file.write(f'{this_out_date}{param.separator}{this_out_time.split(".")[0]}'
+                                              f'{param.separator}{X}{param.separator}{param.intNan}\n')
+
+                file.close()
+msg_lib.info(f'OUTPUT FILE: {output_file_name}')
+output_file.close()

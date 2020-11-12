@@ -1,425 +1,345 @@
-version = "R 0.6.0"
-################################################################################################
-#
-#  usage message
-#
-################################################################################################
-#
-def usage():
-   print "\n\nUSAGE("+version+"):\n\n"
-   print "ntk_computePower.py - a Python script to calculate power of each PSD window over selected bin period bands\n\n"
-   print "                         configuration file name           net     sta      loc    chan     PSD file type  mode=0       run with minimum message output"
-   print "                                         |                 |       |        |        |        |            | = verbose run in verbose mode"
-   print "                                         |                 |       |        |        |        |            |"
-   print "                                         |                 |       |        |        |        |            |          'combined' PSD file to read"
-   print "                                         |                 |       |        |        |        |            |              |"
-   print " python bin/ntk_computePower.py   param=computePower   net=NM sta=SLM loc=DASH chan=BHZ  type=period mode=verbose  file=NM.SLM.--.BHZ.2009-01-01T00:00:00.2010-01-01T00:00:00_period.txt"
-   print "\n\n\n"
-   print "The input PSD file should have the same format as the output of the ntk_extractPsdHour.py script (see NTK PSD/PDF bundle)"
-   print "For more information visit:"
-   print ""
-   print "     http://ds.iris.edu/ds/products/noise-toolkit-pdf-psd/"
-   print "\n\n\n"
+#!/usr/bin/env python
 
-################################################################################################
-#
-# get run arguments
-#
-################################################################################################
-#
-def getArgs(argList):
-   args = {}
-   for i in xrange(1,len(argList)):
-      key,value = argList[i].split('=')
-      args[key] = value
-   return args
-
-################################################################################################
-#
-# get a run argument for the given key
-#
-################################################################################################
-#
-def getParam(args,key,msgLib,value):
-   if key in args.keys():
-      return args[key]
-   elif value is not None:
-      return value
-   else:
-      msgLib.error("missing parameter "+key,1)
-      usage()
-      sys.exit()
-
-################################################################################################
-#
-# Main
-#
-################################################################################################
-#
-# NAME: # ntk_computePower.py - a Python script to calculate power of each PSD window over selected bin period bands
-#
-# Copyright (C) 2014  Product Team, IRIS Data Management Center
-#
-#    This is a free software; you can redistribute it and/or modify
-#    it under the terms of the GNU Lesser General Public License as
-#    published by the Free Software Foundation; either version 3 of the
-#    License, or (at your option) any later version.
-#
-#    This script is distributed in the hope that it will be useful, but
-#    WITHOUT ANY WARRANTY; without even the implied warranty of
-#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
-#    Lesser General Public License (GNU-LGPL) for more details.  The
-#    GNU-LGPL and further information can be found here:
-#    http://www.gnu.org/
-#
-#    You should have received a copy of the GNU Affero General Public License
-#    along with this program.  If not, see <http://www.gnu.org/licenses/>.
-#
-# INPUT:
-#
-# PDF files
-#
-# HISTORY:
-#
-#    2015-04-22 Manoch: file name correction
-#    2014-11-24 Manoch: Beta release (R0.5) to compute power based on a combined PSD file
-#               with format similar to output of the ntk_extractPsdHour.py script (see NTK PSD/PDF bundle)
-#    2013-10-07 Manoch: revision for production test
-#    2013-03-14 Manoch: created
-#
-################################################################################################
-#
-#
-# PACKAGES:
-#
-import glob,sys,re,os,math
+import sys
+import os
+import math
 import numpy as np
-from obspy.core import UTCDateTime
-
-#
-# import the Noise Toolkit libraries
-#
-# os.path.dirname(__file__) gives the current directory
-#
-ntkDirectory   = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
-libraryPath    = os.path.join(ntkDirectory, 'lib')
-sys.path.append(libraryPath)
-
-import msgLib  as msgLib
-import fileLib as fileLib
-import staLib  as staLib
-
-#
-# see if user has provided the run arguments
-#
-args = getArgs(sys.argv)
-if len(args) < 8:
-   msgLib.error("missing argument(s)",1)
-   usage()
-   sys.exit()
-
-script = sys.argv[0]
-
-#
-# import the user-provided parameter file
-#
-paramFile      =  getParam(args,'param',msgLib,None)
 import importlib
-paramPath      = os.path.join(ntkDirectory, 'param')
 
-#
-# check to see if param file exists
-#
-if os.path.isfile(os.path.join(paramPath,paramFile+".py")):
-   sys.path.append(paramPath)
-   param = importlib.import_module(paramFile)
+# Import the Noise Toolkit libraries.
+library_path = os.path.join(os.path.dirname(__file__), '..', 'lib')
+sys.path.append(library_path)
+
+param_path = os.path.join(os.path.dirname(__file__), '..', 'param')
+sys.path.append(param_path)
+
+import msgLib as msg_lib
+import staLib as sta_lib
+import utilsLib as utils_lib
+
+"""
+  NAME:   ntk_computePower.py - a Python 3 script to calculate power of each PSD window over selected bin period bands
+
+  Copyright (C) 2020  Product Team, IRIS Data Management Center
+
+     This is a free software; you can redistribute it and/or modify
+     it under the terms of the GNU Lesser General Public License as
+     published by the Free Software Foundation; either version 3 of the
+     License, or (at your option) any later version.
+
+     This script is distributed in the hope that it will be useful, but
+     WITHOUT ANY WARRANTY; without even the implied warranty of
+     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+     Lesser General Public License (GNU-LGPL) for more details.  The
+     GNU-LGPL and further information can be found here:
+     http://www.gnu.org/
+
+     You should have received a copy of the GNU Affero General Public License
+     along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+  INPUT:
+
+  PDF files
+
+  HISTORY:
+     2020-11-16 Manoch: V.2.0.0 Python and adoption of PEP 8 style guide.
+     2015-04-22 Manoch: file name correction
+     2014-11-24 Manoch: Beta release (V.0.5) to compute power based on a combined PSD file
+                with format similar to output of the ntk_extractPsdHour.py script (see NTK PSD/PDF bundle)
+     2013-10-07 Manoch: revision for production test
+     2013-03-14 Manoch: created
+
+"""
+
+version = 'V.2.0.0'
+script = sys.argv[0]
+script = os.path.basename(script)
+
+# Initial mode settings.
+timing = False
+do_plot = False
+verbose = False
+mode_list = ['0', 'plot', 'time', 'verbose']
+default_param_file = 'computePower'
+if os.path.isfile(os.path.join(param_path, f'{default_param_file}.py')):
+    param = importlib.import_module(default_param_file)
 else:
-   msgLib.error("bad parameter file name ["+paramFile+"]",2)
-   usage()
-   sys.exit()
+    code = msg_lib.error(f'could not load the default parameter file  [param/{default_param_file}.py]', 2)
+    sys.exit(code)
 
-VERBOSE = 0
-arg = getParam(args,'mode',msgLib,1)
-if arg == 'verbose':
-      msgLib.message("VERBOSE RUN")
-      VERBOSE        = 1
+
+def usage():
+    """ Usage message.
+    """
+    print(f'\n\n{script} version {version}\n\n'
+          f'A Python 3 script to calculate power of each PSD window over selected bin period bands.'
+          f'\n\nUsage:\n\t{script} to display the usage message (this message)'
+          f'\n\t  OR'
+          f'\n\t{script} param=FileName net=network sta=station loc=location chandir=channel directory'
+          f' start=YYYY-MM-DDTHH:MM:SS end=YYYY-MM-DDTHH:MM:SS xtype=[period|frequency] verbose=[0|1]\n'
+          f'\n\tto perform extraction where:'
+          f'\n\t param\t\t[default: {default_param_file}] the configuration file name '
+          f'\n\t net\t\t[required] network code'
+          f'\n\t sta\t\t[required] station code'
+          f'\n\t loc\t\t[required] location ID'
+          f'\n\t chan\t\t[required] channel ID. '
+          f'\n\t xtype\t\t[required, period or frequency] X-axis type for the PSD files.'
+          f'\n\t start\t\t[required] start date-time (UTC) for extraction '
+          f'(format YYYY-MM-DDTHH:MM:SS)'
+          f'\n\t end\t\t[required] end date-time (UTC) for extraction '
+          f'(format YYYY-MM-DDTHH:MM:SS)'
+          f'\n\t verbose\t[0 or 1, default: {param.verbose}] to run in verbose mode set to 1'
+          f'\n\t file\t\t[required] the "combined" PSD file (similar to the output of the ntk_extractPsdHour.py '
+          f'script)to read.'
+          f'\n\nInput: '
+          f'\n\tThe input PSD file should have the same format as the output of the ntk_extractPsdHour.py script'
+          f'\n\nOutput: '
+          f'\n\tData file(s) with the file names provided at the end of the run.'
+          f'\n\n\tThe output file name has the form:'
+          f'\n\t\tnet.sta.loc.chan.start.end.xtype.txt'
+          f'\n\tfor example:'
+          f'\n\t\tTA.O18A.--.BHZ.2008-08-14.2008-08-14.period.txt'
+          f'\n\nExamples:'
+          f'\n\n\t-usage:'
+          f'\n\tpython {script}'
+          f'\n\n\t- assuming that you already have executed the following command to generate PSD files:'
+          f'\n\tpython ntk_extractPsdHour.py net=TA sta=O18A loc=DASH chan=BHZ start=2008-08-14T12:00:00 '
+          f'end=2008-08-14T12:30:00 xtype=period'
+          f'\n\n\tcompute power via:'
+          f'\n\tpython {script} param={default_param_file} net=TA sta=O18A loc=DASH chan=BHZ xtype=period verbose=1  '
+          f'file=TA.O18A.--.BHZ.2008-08-14.2008-08-14.period.txt'
+          f'\n\n\n\n')
+
+
+# Get the run arguments.
+args = utils_lib.get_args(sys.argv, usage)
+if not args:
+    usage()
+    sys.exit(0)
+
+# Import the user-provided parameter file. The parameter file is under the param directory at the same level
+# as the script directory.
+param_file = utils_lib.get_param(args, 'param', default_param_file, usage)
+
+if param_file is None:
+    usage()
+    code = msg_lib.error(f'{script}, parameter file is required', 2)
+    sys.exit(code)
+
+# Import the parameter file if it exists.
+if os.path.isfile(os.path.join(param_path, f'{param_file}.py')):
+    param = importlib.import_module(param_file)
 else:
-      #
-      # if mode is >1, then full debug info is printed
-      #
-      VERBOSE = int(arg)
+    usage()
+    code = msg_lib.error(f'{script}, bad parameter file name [{param_file}]', 2)
+    sys.exit(code)
 
-if VERBOSE >0 :
-   print "\n\n[INFO] script: %s" % script
-   print "[INFO] ARG#",len(sys.argv)
-   print "[INFO] ARGS",sys.argv
+# Bin ranges.
+bin_start = list()
+bin_end = list()
+bins = param.bins
 
-#
-# bin ranges
-#
-binStart   = []
-binEnd     = []
-bins       = param.bins
+for _bin in bins:
+    try:
+        bin_start.append(param.binStart[_bin])
+        bin_end.append(param.binEnd[_bin])
+    except Exception as ex:
+        code = msg_lib.error(f'bad band {_bin} in param file', 2)
+        sys.exit(code)
 
-for bin in bins:
-   try:
-     binStart.append(param.binStart[bin])
-     binEnd.append(param.binEnd[bin])
-   except Exception, e:
-      msgLib.error("bad band ["+bin+"] in param file",2)
-      sys.exit()
+if verbose > 0:
+    msg_lib.info(f'PERIOD BIN START: {bin_start}')
+    msg_lib.info(f'PERIOD BIN ENDis: {bin_end}')
 
-if VERBOSE >0 :
-   print "\n\nPERIOD BIN START: " + str(binStart)
-   print "\nPERIOD BIN ENDis: " + str(binEnd)
+network = utils_lib.get_param(args, 'net', None, usage)
+station = utils_lib.get_param(args, 'sta', None, usage)
+location = sta_lib.get_location(utils_lib.get_param(args, 'loc', None, usage))
+channel = utils_lib.get_param(args, 'chan', None, usage)
+xtype = utils_lib.get_param(args, 'xtype', None, usage)
 
-network      = getParam(args,'net',msgLib,None)
-station      = getParam(args,'sta',msgLib,None)
-location     = staLib.getLocation(getParam(args,'loc',msgLib,None))
-channel      = getParam(args,'chan',msgLib,None)
-type         = getParam(args,'type',msgLib,None)
-
-#
 # NOTE: the input PSD file is assumed to have the same format as the output of the ntk_extractPsdHour.py script
-#
-psdFile         = getParam(args,'file',msgLib,None)
-psdDirectory    = os.path.join(param.dataDirectory,param.psdDirectory) 
-psdFileName     = os.path.join(psdDirectory,".".join([network,station,location]),channel,psdFile)
+psd_file = utils_lib.get_param(args, 'file', None, usage)
+psd_directory = os.path.join(param.dataDirectory, param.psdDirectory)
+psd_file_name = os.path.join(psd_directory, ".".join([network, station, location]), channel, psd_file)
 
-#
-# check to see if the PSD file exists
-#
-if not os.path.isfile(psdFileName):
-   msgLib.error("could not find the PSD file ["+psdFileName+"]",2)
-   sys.exit()
+# Check to see if the PSD file exists.
+if not os.path.isfile(psd_file_name):
+    code = msg_lib.error(f'Could not find the PSD file [{psd_file_name}]', 2)
+    sys.exit(code)
 
-#
-# create the power directories as needed
-#
-powerDirectory  = os.path.join(param.dataDirectory,param.powerDirectory)
-if not os.path.exists(powerDirectory):
-      os.makedirs(powerDirectory)
+# Create the power directories as needed
+power_directory = os.path.join(param.dataDirectory, param.powerDirectory)
+if not os.path.exists(power_directory):
+    os.makedirs(power_directory)
 
-powerDirectory  = os.path.join(powerDirectory,".".join([network,station,location]))
-if not os.path.exists(powerDirectory):
-      os.makedirs(powerDirectory)
+power_directory = os.path.join(power_directory, ".".join([network, station, location]))
+if not os.path.exists(power_directory):
+    os.makedirs(power_directory)
 
-powerDirectory  = os.path.join(powerDirectory,channel)
-if not os.path.exists(powerDirectory):
-      os.makedirs(powerDirectory)
+power_directory = os.path.join(power_directory, channel)
+if not os.path.exists(power_directory):
+    os.makedirs(power_directory)
 
-#
-# open the power file
-#
-powerFileName   = os.path.join(powerDirectory,psdFile.replace("_"+type,"").replace("."+type,""))
-outFile         = open(powerFileName, 'w')
+# Open the power file.
+power_file_name = os.path.join(power_directory, psd_file.replace(f'_{xtype}', '').replace(f'.{xtype}', ''))
+out_file = open(power_file_name, 'w')
 
-#
-# write the output header 
-#
-outFile.write("Periods\n")
-outFile.write("%20s %20s" % ("Date","Time"))
-for k in xrange(len(binStart)):
-   outFile.write("%20s" % (str(bins[k]) +" ("+str(binStart[k])+'-'+str(binEnd[k])+")"))
-outFile.write("\n")
+# Write the output header.
+out_file.write('Period ranges\n')
+out_file.write('%20s %20s' % ('Date', 'Time'))
+for k in range(len(bin_start)):
+    out_file.write('%20s' % f'{bins[k]} ({bin_start[k]}-{bin_end[k]})')
+out_file.write('\n')
 
-print "\nPSD FILE  :", psdFileName
-print "\nPOWER FILE:", powerFileName
+msg_lib.info(f'PSD FILE: {psd_file_name}')
+msg_lib.info(f'POWER FILE: {power_file_name}')
 
-#####################################
-#
-# loop through the PSD file, compute bin powers and write them out
-#
-#####################################
-previousDate = None
-previousTime = None
+# Loop through the PSD file, compute bin powers and write them out.
+previous_date = None
+previous_time = None
 
-with open(psdFileName) as inFile:
-    #
+with open(psd_file_name) as in_file:
     # init the records
-    #
-    period = []
-    psd    = []
-    power  = []
+    period = list()
+    psd = list()
+    power = list()
 
-    #
-    # read the entire PSD file
-    #
-    lines    = inFile.readlines()
- 
-    #
-    # find the last non-blank line
-    #
-    lineCount = len(lines)
-    for i in xrange(1,len(lines)):
-       line = lines[-i].strip()
-       if len(line) > 0:
-          lineCount = len(lines) -i +1
-          break
-    if VERBOSE:
-       print "INPUT:",lineCount,"lines"
+    # rRad the entire PSD file.
+    lines = in_file.readlines()
 
-    #
-    # process line by line
-    #
-    for i in xrange(lineCount):
+    # Find the last non-blank line.
+    line_count = len(lines)
+    for i in range(1, len(lines)):
+        line = lines[-i].strip()
+        if len(line) > 0:
+            line_count = len(lines) - i + 1
+            break
+    if verbose:
+        msg_lib.info(f'INPUT: {line_count} lines')
+
+    # Process line by line.
+    for i in range(line_count):
         line = lines[i]
-        #
-        # each row, split columns
-        #
-        date,time,thisX,thisY = re.split('\s+',line.strip(' ').strip())
+        line = line.strip()
+        # Each row, split columns.
+        date, time, this_x, this_y = line.split()
 
-        #
-        # depending on type, recompute X if needed
-        #
-        if type == 'frequency':
-           thisX = 1.0/float(thisX)
+        # Depending on type, recompute X if needed.
+        if xtype == 'frequency':
+            this_x = 1.0 / float(this_x)
 
-        if previousDate == None:
-           previousDate = date
-           previousTime = time
+        if previous_date is None:
+            previous_date = date
+            previous_time = time
 
-        #
-        # group lines based on date and time
-        # save the period and value of interest
-        #
-        if (date == previousDate and time == previousTime) and i < lineCount-1:
-           period.append(float(thisX))
-           psd.append(float(thisY))
+        # Group lines based on date and time
+        # save the period and value of interest.
+        if (date == previous_date and time == previous_time) and i < line_count - 1:
+            period.append(float(this_x))
+            psd.append(float(this_y))
 
-        #
-        # new date-time, jump out and compute power for the previous date-time
-        #
+        # New date-time, jump out and compute power for the previous date-time.
         else:
-           previousLine = line
+            previous_line = line
 
-           #
-           # save the values from the last row, if we are at the end of the file
-           #
-           if i == lineCount -1:
-              period.append(float(thisX))
-              psd.append(float(thisY))
+            # Save the values from the last row, if we are at the end of the file
+            if i == line_count - 1:
+                period.append(float(this_x))
+                psd.append(float(this_y))
 
-           power = np.zeros(len(bins))
+            power = np.zeros(len(bins))
 
-           ######################################
-           # compute power
-           ######################################
-           #
-           if len(period)>0:
+            # Compute power.
+            if len(period) > 0:
+                # Sort them to keep the code simple.
+                period, psd = zip(*sorted(zip(period, psd)))
 
-              #
-              # sort them to keep the code simple
-              #
-              period, psd = zip(*sorted(zip(period, psd)))
+                """Go through the records and for each bin convert to power from dB
+                   NOTE: PSD is equal to the power as the a measure point divided by the width of the bin
+                        PSD = P / W
+                        log(PSD) = Log(P) - log(W)
+                        log(P) = log(PSD) + log(W)  here W is width in frequency
+                        log(P) = log(PSD) - log(Wt) here Wt is width in period
+                """
+                for k in range(len(bins)):
+                    if verbose > 1:
+                        msg_lib.message(f' CHAN: {channel}, DATE": {previous_date} {previous_time}'
+                                        f'PERIOD: {bins[k]} from {bin_start[k]} to {bin_end[k]}')
 
-              #
-              #
-              # go through the records and for each bin convert to power from dB
-              # NOTE: PSD is equal to the power as the a measure point divided by the width of the bin
-              #       PSD = P / W
-              #       log(PSD) = Log(P) - log(W)
-              #       log(P)   = log(PSD) + log(W)  here W is width in frequency
-              #       log(P)   = log(PSD) - log(Wt) here Wt is width in period
-              #
-              for k in xrange(len(bins)):
-                 if VERBOSE > 1 : 
-                     print "==================================="
-                     print " CHAN",channel
-                     print " DATE",previousDate,previousTime
-                     print "PERIOD: ",bins[k]," from ",str(float(binStart[k]))," to ",str(float(binEnd[k]))
-                     print "==================================="
+                    """
+                      For each bin perform rectangular integration to compute power
+                      power is assigned to the period at the begining of the interval
+                           _   _
+                          | |_| |
+                          |_|_|_|
+                    """
 
-                 #
-                 # for each bin perform rectangular integration to compute power
-                 # power is assigned to the period at the begining of the interval
-                 #      _   _
-                 #     | |_| |
-                 #     |_|_|_|
-                 #  
+                    for j in range(0, len(psd) - 1):
+                        # Since to calculate the area we take the width between point j and j+1, as a result we
+                        # only accept the point if it falls before the end point, hence (<).
+                        if float(bin_start[k]) <= float(period[j]) < float(bin_end[k]):
 
-                 for j in xrange(0,len(psd)-1):
-                    #if VERBOSE >0 :
-                    #   print "    \nCHECKING: is "+str(float(period[j]))+" between "+str(float(binStart[k]))+ " to "+str(float(binEnd[k]))
+                            # Here we want to add the area just before the first sample if our window start
+                            # does not fall on a data point. We set start of the band as the start of our window.
+                            if j > 0 and (float(period[j]) > float(bin_start[k]) > float(period[j - 1])):
+                                if verbose > 1:
+                                    msg_lib.info(f'{j} ADJUST THE BAND START {period[j]} BAND NOW GOES'
+                                                 f'   FROM 1: {bin_start[k]} to {period[j + 1]}')
+                                bin_width_hz = abs((1.0 / float(bin_start[k])) - (1.0 / float(period[j + 1])))
+                            elif j == 0 and float(period[j]) > float(bin_start[k]):
+                                if verbose > 1:
+                                    msg_lib.info(f'{j} ADJUST THE BAND START {period[j]} BAND NOW GOES'
+                                                 f'   FROM 1: {bin_start[k]} to {period[j + 1]}')
+                                bin_width_hz = abs((1.0 / float(bin_start[k])) - (1.0 / float(period[j + 1])))
 
-                    #
-                    # since to calculate the area we take the width between point j and j+1, as a result we 
-                    # only accept the point if it falls before the end point, hence (<)
-                    #
-                    if(float(period[j]) >= float(binStart[k]) and float(period[j]) < float(binEnd[k])):
+                            # Here we want to adjust the width if our window end
+                            # does not fall on a data point.
+                            elif j < len(psd) - 1 and (float(period[j]) < float(bin_end[k]) <= float(period[j + 1])):
+                                if verbose > 1:
+                                    msg_lib.info(f'{j} ADJUST THE BAND END {period[j]} BAND NOW GOES'
+                                                 f'    FROM 2: {period[j]} to {bin_end[k]}')
+                                bin_width_hz = abs((1.0 / float(period[j])) - (1.0 / float(bin_end[k])))
+                            elif j == len(psd) - 1 and float(period[j]) < float(bin_end[k]):
+                                if verbose > 1:
+                                    msg_lib.info(f'{j} ADJUST THE BAND END {period[j]} BAND NOW GOES'
+                                                 f'    FROM 2: {period[j]} to {bin_end[k]}')
+                                bin_width_hz = abs((1.0 / float(period[j])) - (1.0 / float(bin_end[k])))
 
-                       #
-                       # here we want to add the area just before the first sample if our window start
-                       # does not fall on a data point. We set start of the band as the start of our window
-                       #
-                       if j > 0 and  (float(period[j]) > float(binStart[k]) and float(period[j-1]) < float(binStart[k])):
-                             if VERBOSE > 1 :
-                                  print j,"ADJUST THE BAND START ",period[j]," BAND NOW GOES"
-                                  print "    FROM 1: "+str(float(binStart[k]))+ " to "+str(float(period[j+1]))
-                             binWidthHz = abs((1.0/float(binStart[k]))-(1.0/float(period[j+1])))
-                       elif j == 0 and float(period[j]) > float(binStart[k]):
-                             if VERBOSE > 1 :
-                                  print j,"ADJUST THE BAND START ",period[j]," BAND NOW GOES"
-                                  print "    FROM 1: "+str(float(binStart[k]))+ " to "+str(float(period[j+1]))
-                             binWidthHz = abs((1.0/float(binStart[k]))-(1.0/float(period[j+1])))
+                            # For the rest in between.
+                            else:
+                                if verbose > 1:
+                                    msg_lib.info(f'{j} NO ADJUSTMENT BAND FROM 3: {period[j]} to {period[j + 1]}')
+                                bin_width_hz = abs((1.0 / float(period[j])) - (1.0 / float(period[j + 1])))
 
-                       #
-                       # here we want to adjust the width if our window end
-                       # does not fall on a data point
-                       # 
-                       elif j < len(psd)-1 and (float(period[j]) < float(binEnd[k]) and float(period[j+1]) >= float(binEnd[k])):
-                            if VERBOSE > 1 :
-                               print j,"ADJUST THE BAND END ",period[j], " BAND NOW GOES"
-                               print "    \nFROM 2: "+str(float(period[j]))+ " to "+str(float(binEnd[k]))
-                            binWidthHz = abs((1.0/float(period[j])) - (1.0/float(binEnd[k])))
-                       elif j == len(psd)-1 and float(period[j]) < float(binEnd[k]):
-                            if VERBOSE > 1 :
-                               print j,"ADJUST THE BAND END ",period[j], " BAND NOW GOES"
-                               print "    \nFROM 2: "+str(float(period[j]))+ " to "+str(float(binEnd[k]))
-                            binWidthHz = abs((1.0/float(period[j])) - (1.0/float(binEnd[k])))
-                       #
-                       # for the rest in between
-                       # 
-                       else:
-                            if VERBOSE > 1 :
-                               print j,"NO ADJUSTMENT"
-                               print "    BAND FROM 3: "+str(float(period[j]))+ " to "+str(float(period[j+1]))
-                            binWidthHz = abs((1.0 /float(period[j])) - (1.0 / (float(period[j+1]))))
-   
-                       if VERBOSE > 1:
-                            print "    BIN WIDTH "+str(binWidthHz)+"Hz"
-                     
-                       power[k] += (math.pow(10.0,float(psd[j])/10.0) * binWidthHz) 
-                       if VERBOSE > 1:
- 	                print "POWER ",psd[j]," ----> ",(math.pow(10.0,float(psd[j])/10.0) * binWidthHz)
+                            if verbose > 1:
+                                msg_lib.info(f'    BIN WIDTH {bin_width_hz} Hz')
 
-                    else:
-                       if VERBOSE >1:
-                          print j,period[j]," REJECTED"
-                 if VERBOSE >1 :
-    	               print "TOTAL POWER ",power[k]
-              outFile.write("%20s %20s" % (previousDate, previousTime))
-              for index in xrange(0,len(binStart)):
-                outFile.write("%20.5e" % (power[index]))
-              outFile.write("\n")
+                            power[k] += (math.pow(10.0, float(psd[j]) / 10.0) * bin_width_hz)
+                            if verbose > 1:
+                                msg_lib.info(
+                                    f'POWER {psd[j]} ----> {math.pow(10.0, float(psd[j]) / 10.0) * bin_width_hz}')
 
-              #
-              # init the records
-              #
-              period = []
-              psd    = []
-              power  = []
+                        else:
+                            if verbose > 1:
+                                msg_lib.info(f'{j} {period[j]} REJECTED')
+                    if verbose > 1:
+                        msg_lib.info(f'TOTAL POWER {power[k]}')
+                out_file.write("%20s %20s" % (previous_date, previous_time))
+                for index in range(0, len(bin_start)):
+                    out_file.write("%20.5e" % (power[index]))
+                out_file.write("\n")
 
-              #
-              # capture the first line tht was left over from previous itteration
-              #
-              date,time,thisX,thisY = re.split('\s+',previousLine.strip(' ').strip()) 
-              if type == 'frequency':
-                 thisX = 1.0/float(thisX)
-              period.append(float(thisX))
-              psd.append(float(thisY))
-              previousDate = date
-              previousTime = time
+                # Init the records.
+                period = list()
+                psd = list()
+                power = list()
 
-
-outFile.closed
+                # Capture the first line tht was left over from previous iteration.
+                previous_line = previous_line.strip()
+                date, time, this_x, this_y = previous_line.split()
+                if type == 'frequency':
+                    this_x = 1.0 / float(this_x)
+                period.append(float(this_x))
+                psd.append(float(this_y))
+                previous_date = date
+                previous_time = time

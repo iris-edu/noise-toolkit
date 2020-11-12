@@ -1,826 +1,765 @@
-version = "R 0.9.5"
+#!/usr/bin/env python
 
-################################################################################################
-#
-# outout usage message
-#
-################################################################################################
-#
-def usage():
-   print "\n\nUSAGE for version: %s\n\n"%(version)
-   print "                  configuration file name           net     sta      loc     startDateTime           endDateTime             x-axis type       0       run with minimum message output"
-   print "                                  |                 |       |        |         |                        |                       |           |  plot    run in plot mode"
-   print "                                  |                 |       |        |         |                        |                       |           |  time    run in timing mode (to output run time for different segments of the script "
-   print "                                  |                 |       |        |         |                        |                       |           |  verbose run in verbose mode"
-   print "                                  |                 |       |        |         |                        |                       |           |"
-   print "     python ntk_computePSD.py     param=computePSD  net=NM sta=SLM  loc=DASH start=2009-11-01T00:00:00 end=2009-11-05T12:00:00 type=period  mode=0"
-   print "     python ntk_computePSD.py     param=computePSD  net=TA sta=959A loc=EP   start=2013-10-01T11:00:00 end=2013-10-01T12:00:00 type=period  mode=1"
-   print " "
-   print "\n\nOUTPUT:\n\n"
-   print " As file and/or plot as indicated by the configuration file. The power output file name is:"
-   print " "
-   print " net sta loc chan  start                    window length (s)"
-   print "   |   |  |   |      |                      |    x-axis type"            
-   print "   |   |  |   |      |                      |    |          "  
-   print "  NM_SLM_--_BHE_2010-01-01T00:00:00.035645_3600_period.txt"
-   print "\n\n\n\n"
-
-################################################################################################
-#
-# get run arguments
-#
-################################################################################################
-#
-def getArgs(argList):
-   args = {}
-   for i in xrange(1,len(argList)):
-      key,value = argList[i].split('=')
-      args[key] = value
-   return args
-
-################################################################################################
-#
-# get a run argument for the given key
-#
-################################################################################################
-#
-def getParam(args,key,msgLib,value):
-   if key in args.keys():
-      return args[key]
-   elif value is not None:
-      return value
-   else:
-      msgLib.error("missing parameter "+key,1)
-      usage()
-      sys.exit()
-
-################################################################################################
-#
-# Main
-#
-################################################################################################
-#
-# Name: ntk_computePSD.py - an ObsPy script to calculate the average power 
-#       spectral density for a given station 
-#
-# Copyright (C) 2017  Product Team, IRIS Data Management Center
-#
-#    This is a free software; you can redistribute it and/or modify
-#    it under the terms of the GNU Lesser General Public License as
-#    published by the Free Software Foundation; either version 3 of the
-#    License, or (at your option) any later version.
-#
-#    This script is distributed in the hope that it will be useful, but
-#    WITHOUT ANY WARRANTY; without even the implied warranty of
-#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
-#    Lesser General Public License (GNU-LGPL) for more details.  The
-#    GNU-LGPL and further information can be found here:
-#    http://www.gnu.org/
-#
-#    You should have received a copy of the GNU Affero General Public License
-#    along with this program.  If not, see <http://www.gnu.org/licenses/>.
-#
-# HISTORY:
-#
-#    2017-01-18 Manoch: R 0.9.5 support for reading data and metadata from files only with no Internet requirement
-#    2016-11-01 Manoch: R 0.9.0 support for obtaining channel responses from local station XML response files
-#    2016-01-25 Manoch: R 0.8.1 support for restricted data, if user and password parameters are provided (see RestrictedData Access under http://service.iris.edu/fdsnws/dataselect/1/)
-#    2015-04-07 Manoch: added check for all parameter values to inform user if they are not defined. Corrected the instrument correction for SAC files that would apply
-#                       sensitivity in addition to instrument correction
-#    2015-04-06 Manoch: addressed the variable maximum period issue that was changing based on the smoothing window length
-#    2015-04-02 Manoch: based on feedback from Robert Anthony, in addition to nan values other non-numeric values may exist. The write that contains a flot() conversion
-#                       is placed in a try block so we can catch any non-numeric conversion issue and report it as user-defined NAN
-#    2015-03-30 Manoch: added a check to number of samples to aviod log of zero (reported by Rob Anthony)
-#    2015-03-17 Manoch: added the "waterLevel" parameter to provide user with more control on how the ObsPy module shrinks values under water-level of max spec amplitude
-#                       when removing the instrument response.
-#    2015-02-24 Manoch: introduced two new parameters (performInstrumentCorrection, applyScale) to allow user avoid instrument correction also now user can turn od decon. filter
-#    2014-10-22 Manoch: added support for Windows installation
-#    2014-05-20 Manoch: added some informative message about data retrieval
-#                       changed format to output each channel to a separate directory and save files
-#                       under DOY in preparation for PQLX-type output
-#    2014-03-19 Manoch: added option to read waveforms from file
-#    2014-01-29 Manoch: created as part of the Noise Toolkit product
-#
-################################################################################################
-#
-
-#
-# PACKAGES:
-#
-import os,sys,math,copy
-
-#
-# import the Noise Toolkit libraries
-#
-libraryPath      = os.path.join(os.path.dirname(__file__), '..', 'lib')
-sys.path.append(libraryPath)
-
-import msgLib  as msgLib
-import fileLib as fileLib
-import staLib  as staLib
-import sfLib as SFL
-import tsLib as TSL
-
-args = getArgs(sys.argv)
-
-#
-# see if user has provided the run arguments
-#
-
-if len(args) < 8:
-   msgLib.error("missing argument(s)",1)
-   usage()
-   sys.exit()
-
-script = sys.argv[0]
-
-#
-# import the user-provided parameter file
-#
-# os.path.dirname(__file__) gives the current directory
-#
-
-paramFile      =  getParam(args,'param',msgLib,None)
+import os
+import sys
+import math
 import importlib
-paramPath      = os.path.join(os.path.dirname(__file__), '..', 'param')
 
-#
-# check to see if param file exists
-#
-if os.path.isfile(os.path.join(paramPath,paramFile+".py")):
-   sys.path.append(os.path.join(os.path.dirname(__file__), '..', 'param'))
-   param = importlib.import_module(paramFile)
-else:
-   msgLib.error("bad parameter file name ["+paramFile+"]",2)
-   usage()
-   sys.exit()
+import matplotlib
+from matplotlib.mlab import csd
 
-doPlot       = msgLib.param(param,'plot').plot            # display plots if requested
-VERBOSE      = msgLib.param(param,'VERBOSE').VERBOSE           
+from obspy.core import UTCDateTime
+from obspy.signal.spectral_estimation import get_nlnm, get_nhnm
 
-#
-# flag to run in verbose mode
-# verbose run will take place if:
-#    - VERBOSE > 0
-#    OR
-#    -  len(sys.argv) > 8
-#
-TIMING   = 0
-doPlot   = 0
-VERBOSE  = 0
-arg = getParam(args,'mode',msgLib,'verbose')
-print "MODE",arg
-if arg == 'plot':
-      msgLib.message("PLOT RUN")
-      doPlot = 1
-elif arg == 'time':
-      msgLib.message("TIMING RUN")
-      TIMING = 1
-elif arg == 'verbose':
-      msgLib.message("VERBOSE RUN")
-      VERBOSE        = 1
-
-if VERBOSE >0 :
-   print "\n\n[INFO] script: %s" % script
-   print "[INFO] ARG#",len(sys.argv)
-   print "[INFO] ARGS",sys.argv
-
-import matplotlib 
-
-#
-# turn off the display requirement if running without the plot option
-#
-if (doPlot <= 0):
-   matplotlib.use('agg')
-
-from   obspy.core import UTCDateTime, read
-from   obspy.core import utcdatetime
-from   datetime   import datetime
-from   numpy import hanning
-
-fromFileOnly  = msgLib.param(param,'fromFileOnly').fromFileOnly
-requestClient = msgLib.param(param,'requestClient').requestClient
-noInternet    = requestClient == 'FILES' and fromFileOnly
-if not noInternet:
-   from   obspy.clients.fdsn import Client
-
-   #
-   # IRIS Client is used for infrasound data requests
-   # calling IRIS client will result in a  Deprecation Warning and should be ignored
-   #
-   from   obspy.clients.iris import Client as IrisClient 
-
-from   time import time
+from time import time
+import datetime
 import matplotlib.pyplot as plt
 import numpy as np
-import os
-import scipy
 
-#
-# R 0.9.5 support for no Internet connection when fromFileOnly flag is set
-#
-irisClient   = None
-client       = None
-user         = None
-password     = None
-if not noInternet:
-   #
-   # WS clients
-   #
-   # if user and password parameters are provided, use them
-   # R 0.8.1 support for restricted data
-   #
-   irisClient = IrisClient(user_agent=msgLib.param(param,'userAgent').userAgent)
-   if 'user' in dir(param) and 'password' in  dir(param):
-       user     = param.user
-       password = param.password
+# Import the Noise Toolkit libraries.
+ntk_directory = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 
-   if user is None or password is None:
-      print "[INFO] accessing no logon client"
-      client = Client(user_agent=msgLib.param(param,'userAgent').userAgent)
-   else:
-      print "[INFO] accessing logon client as",user
-      client = Client(user_agent=msgLib.param(param,'userAgent').userAgent,user=user,password=password)
+param_path = os.path.join(ntk_directory, 'param')
+lib_path = os.path.join(ntk_directory, 'lib')
+
+sys.path.append(param_path)
+sys.path.append(lib_path)
+
+import msgLib as msg_lib
+import fileLib as file_lib
+import staLib  as sta_lib
+import sfLib as sf_lib
+import tsLib as ts_lib
+import utilsLib as utils_lib
+import shared as shared
+
+"""
+ Name: ntk_computePSD.py - a Python 3 script to calculate the average power spectral density for a given station.
+
+ Copyright (C) 2020  Product Team, IRIS Data Management Center
+
+    This is a free software; you can redistribute it and/or modify
+    it under the terms of the GNU Lesser General Public License as
+    published by the Free Software Foundation; either version 3 of the
+    License, or (at your option) any later version.
+
+    This script is distributed in the hope that it will be useful, but
+    WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+    Lesser General Public License (GNU-LGPL) for more details.  The
+    GNU-LGPL and further information can be found here:
+    http://www.gnu.org/
+
+    You should have received a copy of the GNU Affero General Public License
+    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+ History:
+
+    2020-11-16 Manoch: V.2.0.0 Python 3, use of Fedcatalog, adoption of CSD changes and adoption of PEP 8 style guide.
+    2019-09-09 Robert Anthony (USGS, Albuquerque Seismological Laboratory): 
+                       Using CSD to compute the cross spectral density of two signals
+    2017-01-18 Manoch: V.0.9.5 support for reading data and metadata from files only with no Internet requirement
+    2016-11-01 Manoch: V.0.9.0 support for obtaining channel responses from local station XML response files
+    2016-01-25 Manoch: V.0.8.1 support for restricted data, if user and password parameters are provided (see 
+                       RestrictedData Access under http://service.iris.edu/fdsnws/dataselect/1/)
+    2015-04-07 Manoch: added check for all parameter values to inform user if they are not defined. Corrected the 
+                       instrument correction for SAC files that would apply
+                       sensitivity in addition to instrument correction
+    2015-04-06 Manoch: addressed the variable maximum period issue that was changing based on the smoothing 
+                       window length
+    2015-04-02 Manoch: based on feedback from Robert Anthony, in addition to nan values other non-numeric values 
+                       may exist. The write that contains a flot() conversion
+                       is placed in a try block so we can catch any non-numeric conversion issue and report it as 
+                       user-defined NAN
+    2015-03-30 Manoch: added a check to number of samples to aviod log of zero (reported by Rob Anthony)
+    2015-03-17 Manoch: added the 'waterLevel' parameter to provide user with more control on how the ObsPy module 
+                       shrinks values under water-level of max spec amplitude
+                       when removing the instrument response.
+    2015-02-24 Manoch: introduced two new parameters (performInstrumentCorrection, applyScale) to allow user avoid 
+                       instrument correction also now user can turn od decon. filter
+    2014-10-22 Manoch: added support for Windows installation
+    2014-05-20 Manoch: added some informative message about data retrieval
+                       changed format to output each channel to a separate directory and save files
+                       under DOY in preparation for PQLX-type output
+    2014-03-19 Manoch: added option to read waveforms from file
+    2014-01-29 Manoch: created as part of the Noise Toolkit product
+
+"""
+
+version = 'V.2.0.0'
+script = sys.argv[0]
+script = os.path.basename(script)
+
+# Initial mode settings.
+timing = False
+do_plot = False
+verbose = False
+mode_list = ['0', 'plot', 'time', 'verbose']
+default_param_file = 'computePSD'
+if os.path.isfile(os.path.join(param_path, f'{default_param_file}.py')):
+    param = importlib.import_module(default_param_file)
 else:
-   print "[INFO] data and metadata from files"
+    code = msg_lib.error(f'could not load the default parameter file  [param/{default_param_file}.py]', 2)
+    sys.exit(code)
 
 
+def usage():
+    """ Usage message.
+    """
+    sw_width = param.octaveWindowWidth
+    sw_shift = param.octaveWindowShift
+    print(f'\n\n{script} version {version}\n\n'
+          f'A Python 3 script that calculates average power spectral densities for a given station. '
+          f'The script:'
+          f'\n\t- identifies the FDSN data provider for the requested station using the Fedcatalog service '
+          f'\n\t  from IRIS (https://service.iris.edu/irisws/fedcatalog/1/)'
+          f'\n\t- requests waveform and response data for the given station(s)/channels(s) using '
+          f'ObsPy\'s FDSN client'
+          f'\n\t  OR\n\t- reads user-supplied waveform data files in SAC, MSEED, CSS, etc. format from a local disk'
+          f'\n\n\t  Then\n\t- computes PSDs for the waveform data and '
+          f'populates a file-based PSD database'
+          f'\n\nUsage:\n\t{script} to display the usage message (this message)'
+          f'\n\t  OR'
+          f'\n\t{script} param=FileName client=[FDSN|FILES] net=network sta=station loc=location chan=channel(s)'
+          f' start=YYYY-MM-DDTHH:MM:SS end=YYYY-MM-DDTHH:MM:SS xtype=[period|frequency] plot=[0|1] verbose=[0|1]'
+          f' timing=[0|1]\n'
+          f'\n\tto perform computations where:'
+          f'\n\t  param\t\t[default: {default_param_file}] the configuration file name '
+          f'\n\t  client\t[default: {param.requestClient}] client to use to make data/metadata requests '
+          f'(FDSN or FILES) '
+          f'\n\t  net\t\t[required] network code'
+          f'\n\t  sta\t\t[required] station code'
+          f'\n\t  loc\t\t[required] location ID'
+          f'\n\t  chan\t\t[default: {param.channel}] channel ID(s); separate multiple channel '
+          f'codes by comma (no space)'
+          f'\n\t  xtype\t\t[period or frequency, default: {param.xtype[0]}] X-axis type (period or '
+          f'frequency for outputs and plots)'
+          f'\n\t  start\t\t[required] start date-time (UTC) of the interval for which PSDs to be computed '
+          f'(format YYYY-MM-DDTHH:MM:SS)'
+          f'\n\t  end\t\t[required] end date-time (UTC) of the interval for which PSDs to be computed '
+          f'(format YYYY-MM-DDTHH:MM:SS)'
+          f'\n\t  sw_width\t[default: '
+          f'{sw_width}] Smoothing window width in octave'
+          f'\n\t  sw_shift\t[default: '
+          f'{sw_shift}'
+          f'] Smoothing window shift in fraction of octave'
+          f'\n\t  plotnm\t[0 or 1, default {param.plotNm}] plot the New High/Low Noise Models [0|1]'
+          f'\n\t  plot\t\t[0 or 1, default: {param.plot}] to run in plot mode set to 1'
+          f'\n\t  timing\t[0 or 1, default: {param.timing}] to run in timing mode (set to 1 to output run times for '
+          f'different segments of the script)'
+          f'\n\t  verbose\t[0 or 1, default: {param.verbose}] to run in verbose mode set to 1'
+          f'\n\nOutput: Data file(s) and/or plot(s) as indicated in the parameter file and by the plot option. The '
+          f'complete path to each output file is displayed during the run.'
+          f'\n\n\tThe output file name has the form:'
+          f'\n\t\tnet.sta.loc.chan.start.window-length.xtype.txt'
+          f'\n\tfor example:'
+          f'\n\t\tNM.SLM.--.BHZ.2009-03-24T23:30:00.3600.period.txt'
+          f'\n\nExamples:'
+          f'\n\n\t- usage:'
+          f'\n\tpython {script}'
+          f'\n\n\t- minimum required parameters for 1.5 hour window with PSDs saved to files:'
+          f'\n\tpython {script} net=TA sta=O18A loc=DASH start=2008-08-14T12:00:00 end=2008-08-14T13:30:00'
+          f'\n\n\t- limit channel to BHZ, process only one hour (default) and plot the PSD:'
+          f'\n\tpython {script} net=TA sta=O18A loc=DASH chan=BHZ start=2008-08-14T12:00:00 '
+          f'end=2008-08-14T13:00:00 xtype=period plot=1'
+          f'\n\n\t- limit channel to BHZ, process only one hour (default) and plot the PSD with more smoothing:'
+          f'\n\tpython {script} param=computePSD net=TA sta=O18A loc=DASH chan=BHZ start=2008-08-14T12:00:00 '
+          f'end=2008-08-14T13:00:00 xtype=period sw_width=0.5 sw_shift=0.25 plot=1'
+          f'\n\n\t- limit channel to BHZ, process only one hour (default) and plot the PSD with even more smoothing:'
+          f'\n\tpython {script} param=computePSD net=TA sta=O18A loc=DASH chan=BHZ start=2008-08-14T12:00:00 '
+          f'end=2008-08-14T13:30:00 xtype=period sw_width=1 plot=1'
+          f'\n\n\t- limit channel to BHZ but process many days of data:'
+          f' \n\tpython ntk_computePSD.py param=computePSD net=NM sta=SLM  loc=DASH chan=BHZ '
+          f'start=2009-03-01T00:00:00 end=2009-03-31T00:00:00 xtype=period plot=0 verbose=0'
+          f'\n\n\t- try other stations and time intervals:'
+          f'\n\tpython {script} net=NM sta=SLM loc=DASH chan=BHZ start=2009-11-01T12:00:00 '
+          f'end=2009-11-01T13:00:00 xtype=period plot=1'
+          f'\n\tpython {script} param=computePSD net=TA sta=959A loc=DASH start=2013-10-01T11:00:00 '
+          f'end=2013-10-01T13:00:00 xtype=period plot=1'
+          f'\n\n\t- BHZ channel for GR.BFO with data from a data center other than IRIS:'
+          f'\n\tpython {script} param=computePSD net=GR sta=BFO loc=DASH chan=BHZ start=2020-10-01T00:00:00 '
+          f'end=2020-10-01T01:00:00 xtype=period plot=1'
+          f'\n\n\t- reads data from files by changing the client (make sure data files exist) and gets the '
+          f'response from IRIS (to read responses from files, set fromFileOnly parameter to True'
+          f'\n\tpython {script}  net=TA sta=W5 loc=DASH start=2014-03-17T04:30:00 end=2014-03-17T05:30:00 type=period '
+          f'client=FILES plot=1'
+          f'\n\n\n\n')
 
-action = "" # keep track of what you are doing
 
-#
-# RUN ARGUMENTS:
-#
-t0             = time()
-t1 = fileLib.timeIt("START",t0)
-print "\n"
-msgLib.message("START")
+# Get the run arguments.
+args = utils_lib.get_args(sys.argv, usage)
+if not args:
+    usage()
+    sys.exit(0)
 
+# Import the user-provided parameter file. The parameter file is under the param directory at the same level
+# as the script directory.
+param_file = utils_lib.get_param(args, 'param', default_param_file, usage)
 
-inNetwork      = getParam(args,'net',msgLib,None)
-inStation      = getParam(args,'sta',msgLib,None)
-inLocation     = staLib.getLocation(getParam(args,'loc',msgLib,None))
-inChannel      = getParam(args,'chan',msgLib,msgLib.param(param,'channel').channel)
+if param_file is None:
+    usage()
+    code = msg_lib.error(f' parameter file is required', 2)
+    sys.exit(code)
 
-maxPeriod      = msgLib.param(param,'maxT').maxT * pow(2,msgLib.param(param,'octaveWindowWidth').octaveWindowWidth/2.0)    # maximum period needed to compute value at maxT period point
-minFrequency   = 1.0/float(maxPeriod)                               # minimum frequency  needed to compute value at 1.0/maxT frequency point
-if TIMING >0 :
-   t0 = fileLib.timeIt("ARTGS",t0)
+# Import the parameter file if it exists.
+if os.path.isfile(os.path.join(param_path, f'{param_file}.py')):
+    param = importlib.import_module(param_file)
+else:
+    usage()
+    code = msg_lib.error(f'bad parameter file name [{param_file}]', 2)
+    sys.exit(code)
 
-if VERBOSE >0 :
-   print "[INFO] MAX PERIOD: "+str(msgLib.param(param,'maxT').maxT)
-   print "[INFO] CALL: "+str(sys.argv)
+# Run parameters.
+window_length = utils_lib.param(param, 'windowLength').windowLength
+if not utils_lib.is_number(window_length):
+    code = msg_lib.error(f'Invalid window_length  [{window_length}] in the parameter file', 2)
+    sys.exit(code)
+
+request_channel = utils_lib.get_param(args, 'chan', utils_lib.param(param, 'channel').channel, usage)
+xtype = utils_lib.get_param(args, 'xtype', utils_lib.param(param, 'xtype').xtype[0], usage)
+if xtype not in param.xtype:
+    usage()
+    code = msg_lib.error(f'Invalid xtype  [{xtype}]', 2)
+    sys.exit(code)
+
+# Set the run mode.
+do_plot = utils_lib.get_param(args, 'plot', utils_lib.param(param, 'plot').plot, usage)
+do_plot = utils_lib.is_true(do_plot)
+
+plot_nm = utils_lib.get_param(args, 'plotnm', utils_lib.param(param, 'plotNm').plotNm, usage)
+do_plot_nnm = utils_lib.is_true(plot_nm)
+
+verbose = utils_lib.get_param(args, 'verbose', utils_lib.param(param, 'verbose').verbose, usage)
+verbose = utils_lib.is_true(verbose)
+
+timing = utils_lib.get_param(args, 'timing', utils_lib.param(param, 'timing').timing, usage)
+timing = utils_lib.is_true(timing)
+
+if verbose:
+    msg_lib.info(f'script: {script} {len(sys.argv) - 1} args: {sys.argv}')
+
+octaveWindowWidth = float(1.0 / 2.0)
+octaveWindowShift = float(1.0 / 8.0)  # Smoothing window shift : float(1.0/8.0)= 1/8 octave shift;
+# float(1.0/8.0) 1/8 octave shift, etc.
+
+""" Smoothing window width in octave.
+    For test against PQLX use 1 octave width.
+    Smoothing window width : float(1.0/1.0)= 1 octave smoothing;
+    float(1.0/4.0) 1/4 octave smoothing, etc."""
+octave_window_width = float(utils_lib.get_param(args, 'sw_width',
+                                                utils_lib.param(param, 'octaveWindowWidth').octaveWindowWidth, usage))
+
+# Smoothing window shift : float(1.0/4.0)= 1/4 octave shift; float(1.0/8.0) 1/8 octave shift, etc.
+octave_window_shift = float(utils_lib.get_param(args, 'sw_shift',
+                                                utils_lib.param(param, 'octaveWindowShift').octaveWindowShift, usage))
+
+smoothing_label = f'{octave_window_width} octave smoothing \n{octave_window_shift} octave shift'
+
+# Turn off the display requirement if running without the plot option.
+if not do_plot:
+    matplotlib.use('agg')
+
+from_file_only = utils_lib.param(param, 'fromFileOnly').fromFileOnly
+request_client = utils_lib.get_param(args, 'client', utils_lib.param(param, 'requestClient').requestClient, usage)
+if request_client not in ('FILES', 'FDSN'):
+    usage()
+    code = msg_lib.error(f'Invalid request client "{request_client}"', 3)
+    sys.exit(code)
+internet = not (request_client == 'FILES' and from_file_only)
+msg_lib.info(f'Use Internet to get metadata: {internet}')
+
+if internet:
+    from obspy.clients.fdsn import Client
+
+    # IRIS web service clients.
+    from obspy.clients.iris import Client as IrisClient
+
+# R 0.9.5 support for no Internet connection when from_file_only flag is set
+iris_client = None
+client = None
+user = None
+password = None
+if internet:
+    # If user and password parameters are provided, use them
+    # R 0.8.1 support for restricted data
+    iris_client = IrisClient(user_agent=utils_lib.param(param, 'userAgent').userAgent)
+    if 'user' in dir(param) and 'password' in dir(param):
+        user = param.user
+        password = param.password
+
+    if user is None or password is None:
+        msg_lib.info('accessing no logon client')
+        client = Client(user_agent=utils_lib.param(param, 'userAgent').userAgent)
+    else:
+        msg_lib.info(f'accessing logon client as {user}')
+        client = Client(user_agent=utils_lib.param(param, 'userAgent').userAgent, user=user, password=password)
+    response_directory = None
+else:
+    msg_lib.info('[INFO] data and metadata from files')
+    response_directory = utils_lib.param(param, 'respDirectory').respDirectory
+
+# Keep track of what you are doing.
+action = str()
+
+# Runtime arguments.
+t0 = time()
+t1 = utils_lib.time_it('START', t0)
+msg_lib.message('START')
+
+request_network = utils_lib.get_param(args, 'net', None, usage)
+request_station = utils_lib.get_param(args, 'sta', None, usage)
+request_location = sta_lib.get_location(utils_lib.get_param(args, 'loc', None, usage))
+
+# Maximum period needed to compute value at maxT period point.
+max_period = utils_lib.param(param, 'maxT').maxT * pow(2, octave_window_width / 2.0)
+
+# Minimum frequency  needed to compute value at 1.0/maxT frequency point.
+min_frequency = 1.0 / float(max_period)
+
+if timing:
+    t0 = utils_lib.time_it('ARGS', t0)
+
+if verbose:
+    msg_lib.info(f'MAX PERIOD: {utils_lib.param(param, "maxT").maxT}')
+    msg_lib.info(f'CALL: {sys.argv}')
 
 inventory = None
-respDir   = None
-respDir   = msgLib.param(param,'respDirectory').respDirectory
 
-#
-# less than 3 characters station name triggers wildcard
-#
+# Less than 3 characters station name triggers wildcards.
+if len(request_station) <= 2:
+    if request_client == 'IRIS':
+        msg_lib.error('Invalid station name (for IRIS client, wildcards are not accepted. '
+                      'Please use full station name)', 2)
+        sys.exit()
 
-if(len(inStation) <= 2):
-   if requestClient == "IRIS":
-      msgLib.error("invalid station name (for IRIS client, wildcards are not accepted. Please use full station name)",2)
-      sys.exit()
-      
-   inStation = "*" + inStation + "*"
+    request_station = f'*{request_station}*'
 
-#
-# specific start and end date and times from user
-#
-requestStartDateTime = getParam(args,'start',msgLib,None)
-requestEndDateTime   = getParam(args,'end',msgLib,None)
-   
-if TIMING >0 :
-   t0 = fileLib.timeIt('requet info',t0)
+# Specific start and end date and times from user.
+request_start_date_time = utils_lib.get_param(args, 'start', None, usage)
+request_start_datetime = UTCDateTime(request_start_date_time)
 
-print "\n[INFO] requesting "+inNetwork+"."+inLocation+"."+inStation+"."+inChannel+" "+requestStartDateTime+"  to  "+requestEndDateTime
+request_end_date_time = utils_lib.get_param(args, 'end', None, usage)
+request_end_datetime = UTCDateTime(request_end_date_time)
 
-#
-# processing parameters
-#
-xType   = getParam(args,'type',msgLib,msgLib.param(param,'xType').xType[0])   # what the x-axis should represent
+if timing:
+    t0 = utils_lib.time_it('request info', t0)
+
+msg_lib.info(f'Requesting {request_network}.{request_location}.{request_station}.'
+             f'{request_channel} from  {request_start_date_time}  to  {request_end_date_time}')
+
+# Processing parameters.
+# What the x-axis should represent.
 try:
-   plotIndex = msgLib.param(param,'xType').xType.index(xType)
-except Exception, e:
-   print str(e)
-   msgLib.error("invalid plot type ("+xType+")",2)
-   usage()
-   sys.exit()
+    plot_index = utils_lib.param(param, 'xtype').xtype.index(xtype)
+except Exception as e:
+    msg_lib.error(f'Invalid plot type ({xtype})\n{e}', 2)
+    usage()
+    sys.exit()
 
-if TIMING >0 :
-   t0 = fileLib.timeIt('parameters',t0)
+if timing:
+    t0 = utils_lib.time_it('parameters', t0)
 
-if VERBOSE >0 :
-   print "[INFO] Window From - To: "+str(utcdatetime.UTCDateTime(requestStartDateTime))+" - "+str(utcdatetime.UTCDateTime(requestEndDateTime))+"\n"
+if verbose:
+    msg_lib.info(f'Window From {request_start_date_time} to '
+                 f'{request_end_date_time}\n')
 
-#
-# window duration
-#
+# Window duration.
 try:
-   duration = int(utcdatetime.UTCDateTime(requestEndDateTime) - utcdatetime.UTCDateTime(requestStartDateTime)) 
-except Exception, e:
-   print str(e)
-   msgLib.error("invalid date-time ["+requestStartDateTime+"-"+requestEndDateTime+"]",1)
-   usage()
-   sys.exit()
+    duration = int(request_end_datetime - request_start_datetime)
+except Exception as e:
+    msg_lib.error(f'Invalid date-time [{request_start_date_time} - {request_end_date_time}]\n{e}', 1)
+    usage()
+    sys.exit()
 
-if TIMING >0 :
-   t0 = fileLib.timeIt('window info',t0)
+if timing:
+    t0 = utils_lib.time_it('window info', t0)
 
-if VERBOSE >0 :
-   print "PLOTINDEX:",plotIndex
-   print "[INFO] Window Duration: "+str(duration)+"\n"
-   print "[PAR] XLABEL:",msgLib.param(param,'xlabel').xlabel[xType]
-   print "[PAR] XLIM(",msgLib.param(param,'xlimMin').xlimMin,",",msgLib.param(param,'xlimMax').xlimMax,")"
-   print "[PAR] YLIM(",msgLib.param(param,'ylimLow').ylimLow,",",msgLib.param(param,'ylimHigh').ylimHigh,")"
+if verbose:
+    msg_lib.info(f'PLOTINDEX: {plot_index}\n'
+                 f'Window Duration: {duration}\n'
+                 f'[PAR] XLABEL: {utils_lib.param(param, "xlabel").xlabel[xtype]}\n'
+                 f'[PAR] XLIM({utils_lib.param(param, "xlimMin").xlimMin}, '
+                 f'{utils_lib.param(param, "xlimMax").xlimMax})'
+                 f'[PAR] YLIM({utils_lib.param(param, "ylimLow").ylimLow}, '
+                 f'{utils_lib.param(param, "ylimHigh").ylimHigh})')
 
-#
-# request date information
-#
+# Request date information.
 try:
-   year, week , weekday = utcdatetime.UTCDateTime(requestStartDateTime).isocalendar()
-except Exception, e:
-   print str(e)
-   msgLib. error("invalid start date-time ["+requestStartDateTime+"]",1)
-   usage()
-   sys.exit()
+    year, week, weekday = request_start_datetime.isocalendar()
+except Exception as e:
+    msg_lib.error(f'Invalid start date-time [{request_start_date_time}]\n{e}', 1)
+    usage()
+    sys.exit()
 
+psd_db_directory = utils_lib.mkdir(utils_lib.param(param, 'psdDbDirectory').psdDbDirectory)
+data_directory = utils_lib.mkdir(utils_lib.param(param, 'dataDirectory').dataDirectory)
+if request_client == 'FILES':
+    cat = {'Files': {'bulk': utils_lib.param(param, 'fileTag').fileTag}}
+else:
+    # Initiate Fedcatalog request for data.
+    request_query = utils_lib.get_fedcatalog_url(request_network, request_station, request_location,
+                                                 request_channel, request_start_date_time,
+                                                 request_end_date_time)
 
-############################################## CODE ##############################################
-#
-# get the data
-#
-requestNetwork    = copy.copy(inNetwork)
-requestStation    = copy.copy(inStation)
-requestLocation   = copy.copy(inLocation)
-requestChannel    = copy.copy(inChannel)
+    fedcatalog_url = f'{shared.fedcatalog_url}{request_query}'
+    cat = ts_lib.get_fedcatalog_station(fedcatalog_url, request_start_date_time,
+                                        request_end_date_time, shared.chunk_length, chunk_count=shared.chunk_count)
 
-#
-# start processing time segments
-#
-startDateTime = copy.copy(requestStartDateTime)
-endDateTime   = copy.copy(requestEndDateTime)
+# Production label.
+production_date = datetime.datetime.utcnow().replace(microsecond=0).isoformat()
+production_label = f'{shared.production_label}'
+production_label = f'{production_label} {script} {version}'
+production_label = f'{production_label}\n{production_date} UTC'
+production_label = f'{production_label}\ndoi:{shared.ntk_doi}'
 
-#
-# work on each window duration (1-hour)
-#
-# LOOP: WINDOW
-#
-for tStep in xrange(0,duration,msgLib.param(param,'windowShift').windowShift):
+# Get data from each Data Center.
+stream = None
+for _key in cat:
+    st = None
 
-   if TIMING:
-      t0 = fileLib.timeIt('start WINDOW',t0)
+    if verbose:
+        msg_lib.info('Sending requests for:')
+        for line in cat[_key]['bulk']:
+            msg_lib.info(line)
 
-   tStart            = UTCDateTime(requestStartDateTime)+tStep
-   tEnd              = tStart + msgLib.param(param,'windowLength').windowLength
-   segmentStart      = tStart.strftime("%Y-%m-%d %H:%M:%S.0")
-   segmentStartYear  = tStart.strftime("%Y")
-   segmentStartDOY   = tStart.strftime("%j")
-   segmentEnd        = tEnd.strftime("%Y-%m-%d %H:%M:%S.0")
-
-   if requestClient == "FILES":
-      print "[INFO] reading " + fileLib.getTag(".",[requestNetwork, requestStation, requestLocation, requestChannel]) + " from " + segmentStart + " to " + segmentEnd + " from " + msgLib.param(param,'requestClient').requestClient
-   else:
-      print "[INFO] requesting " + fileLib.getTag(".",[requestNetwork, requestStation, requestLocation, requestChannel]) + " from " + segmentStart + " to " + segmentEnd + " from " + msgLib.param(param,'requestClient').requestClient
-
-   #
-   # get channel stream + detrend
-   # TSL.getChannelWaveform removes the linear trend from trace
-   #
-   try:
-      #
-      # request via IRIS WS -- often done for non-standard instrument correction
-      #
-      if TIMING:
-         t0 = fileLib.timeIt('requesting WAVEFORM',t0)
-
-      if requestClient == "IRIS":
-         stream = TSL.getIrisChannelWaveform (requestNetwork, requestStation, requestLocation, requestChannel,
-                     segmentStart,segmentEnd,1,msgLib.param(param,'performInstrumentCorrection').performInstrumentCorrection,msgLib.param(param,'applyScale').applyScale,
-                     msgLib.param(param,'deconFilter1').deconFilter1, msgLib.param(param,'deconFilter2').deconFilter2, msgLib.param(param,'deconFilter3').deconFilter3, 
-                     msgLib.param(param,'deconFilter4').deconFilter4, msgLib.param(param,'unit').unit,irisClient)
-      #
-      # read from files but request response via Files and/or WS
-      #
-      elif requestClient == "FILES":
-         useClient = client
-         if noInternet:
-            useClient = None
-         inventory,stream = TSL.getChannelWaveformFiles (requestNetwork, requestStation, requestLocation, requestChannel,
-                     segmentStart,segmentEnd,1,msgLib.param(param,'performInstrumentCorrection').performInstrumentCorrection,msgLib.param(param,'applyScale').applyScale,
-                     msgLib.param(param,'deconFilter1').deconFilter1, msgLib.param(param,'deconFilter2').deconFilter2, msgLib.param(param,'deconFilter3').deconFilter3,
-                     msgLib.param(param,'deconFilter4').deconFilter4, msgLib.param(param,'waterLevel').waterLevel, msgLib.param(param,'unit').unit,useClient,msgLib.param(param,'fileTag').fileTag, respdir = respDir, inventory = inventory)
-
-      #
-      # request via FDSN WS 
-      #
-      else:
-         stream = TSL.getChannelWaveform (requestNetwork, requestStation, requestLocation, requestChannel,
-                     segmentStart,segmentEnd,1,msgLib.param(param,'performInstrumentCorrection').performInstrumentCorrection,msgLib.param(param,'applyScale').applyScale,
-                     msgLib.param(param,'deconFilter1').deconFilter1, msgLib.param(param,'deconFilter2').deconFilter2, msgLib.param(param,'deconFilter3').deconFilter3, 
-                     msgLib.param(param,'deconFilter4').deconFilter4, msgLib.param(param,'waterLevel').waterLevel, msgLib.param(param,'unit').unit,client)
-
-      if stream is None or len(stream) <= 0:
-         msgLib.warning('Channel Waveform','No data available for '+ '.'.join([requestNetwork,requestStation,requestLocation,requestChannel]))
-         continue
-   except Exception, e:
-      print str(e)
-      print "[INFO] waveform request failed\n"
-      continue
-  
-   traceKeyList = []
-   for streamIndex in xrange(len(stream)):
-     frequency   = []
-     period      = []
-     power       = []
-     stChannel = None
-
-     trChannel  = stream[streamIndex] 
-     network    = trChannel.stats.network
-     station    = trChannel.stats.station
-     location   = staLib.getLocation(trChannel.stats.location)
-     channel    = trChannel.stats.channel
-     if VERBOSE:
-        print "[INFO] response: ",trChannel.stats
-     if channel == "BDF":
-        powerUnits = msgLib.param(param,'powerUnits').powerUnits["PA"]
-     else: 
-        if msgLib.param(param,'performInstrumentCorrection').performInstrumentCorrection:
-            powerUnits = msgLib.param(param,'powerUnits').powerUnits[trChannel.stats.response.instrument_sensitivity.input_units]
-        else:
-            powerUnits = msgLib.param(param,'powerUnits').powerUnits["SEIS"]
-     xUnits     = msgLib.param(param,'xlabel').xlabel[xType.lower()]
-     traceKey = fileLib.getTag(".",[network,station,location,channel])
-
-     #
-     # if there is a gap, we only proicess the first segment
-     #
-     if traceKey in traceKeyList:
-         continue
-     else:
-         traceKeyList.append(traceKey)
-
-     if TIMING:
-        t0 = fileLib.timeIt('got WAVEFORM',t0)
-
-     if VERBOSE:
-        print "[INFO] processing" ,traceKey,"\n"
-
-     #
-     # parameters
-     #
-     nPoints = trChannel.stats.npts
-     samplingFrequency = trChannel.stats.sampling_rate
-     delta = float(trChannel.stats.delta)
-
-     #
-     # construct the time array
-     #
-     traceTime = np.arange(nPoints) / samplingFrequency
-
-     if TIMING:
-        t0 = fileLib.timeIt('build trace timr',t0)
-
-     if VERBOSE:
-        print "[INFO] got number of points as " + str(nPoints) + "\n"
-        print "[INFO] got sampling frequency as " + str(samplingFrequency) + "\n"
-        print "[INFO] got sampling interval as " + str(delta) + "\n"
-        print "[INFO] got time as " + str(traceTime) + "\n"
-  
-     #
-     # calculate FFT parameters
-     #
-     # number of samples per window is obtained by dividing the total number of samples
-     # by the number of side-by-side time windows along the trace 
-     #
-
-     #
-     # first calculate the number of points needed based on the run parameters
-     #
-     thisNSamp = int((float(msgLib.param(param,'windowLength').windowLength) / delta +1)/msgLib.param(param,'nSegWindow').nSegWindow)
-     nSampNeeded  = 2**int(math.log(thisNSamp, 2)) # make sure it is power of 2
-     if VERBOSE:
-        print "nSamp Needed:",nSampNeeded
-
-     #
-     # next calculate the number of points needed based on the trace parameters
-     #
-     thisNSamp = int(nPoints/msgLib.param(param,'nSegWindow').nSegWindow)
-     
-     #
-     # avoid log of bad numbers
-     #
-     if thisNSamp <= 0:
-        msgLib.warning("FFT","needed "+str(nSampNeeded)+" smples but no samples are available, will skip this trace")
-        continue
-     nSamp  = 2**int(math.log(thisNSamp, 2)) # make sure it is power of 2
-     if VERBOSE:
-        print "nSamp Available:",nSamp
-
-     if nSamp < nSampNeeded:
-        msgLib.warning("FFT","needed "+str(nSampNeeded)+" smples but only "+str(nSamp)+" samples are available, will skip this trace")
+    if not cat[_key]['bulk']:
+        msg_lib.warning(f'Skipping data request from {_key}, no stations to request!\n')
         continue
 
-     nShift = int(nSamp * (1.0 - float(msgLib.param(param,'percentOverlap').percentOverlap) / 100.0))
+    if request_client == 'FILES':
+        msg_lib.info(f'Reading data from {cat[_key]["bulk"]}')
+    else:
+        msg_lib.info(f'Requesting data from {_key} via {ts_lib.get_service_url(cat, _key)}\n')
 
-     if VERBOSE:
-        print "[INFO] FFT msgLib.param(param,'nSegWindow').nSegWindow,nSamp,nShift: ",msgLib.param(param,'nSegWindow').nSegWindow,nSamp,nShift
-
-     #
-     # initialize the spectra 
-     # The size of m11 is half of the mSamp, as data are real and
-     # and we only need the positive frequency portion
-     #
-     action = "initialize the spectra"
-     m11 = np.zeros((nSamp/2)+1,dtype=np.complex)
-
-     #
-     # build the tapering window
-     #
-     action = "taper"
-     taperWindow = np.hanning(nSamp)
-
-     #
-     # loop through windows and calculate the spectra
-     #
-     action = "loop"
-     startIndex = 0
-     endIndex   = 0
-
-     #
-     # go through segment
-     #
-     if VERBOSE:
-        print "nSamp",nSamp
-        print "DELTA:",delta,"\n\n"
-
-     nSegCount = 0
-     for n in xrange(0,msgLib.param(param,'nSegments').nSegments):
-        if TIMING:
-           t0 = fileLib.timeIt('segment '+str(n),t0)
-
-        #
-        # each segment srats at startIndex and ends at endIndex-1
-        #
-        endIndex       = startIndex + nSamp
-
-        if VERBOSE:
-           print "STARTINDEX",startIndex
-           print "ENDINDEX",endIndex
-
-        timeSegment    = []
-        channelSegment = []
- 
-        #
-        # extract the segments
-        # using Welch's method. Segments are length nSamp with each segment
-        # int(nSamp * (1.0-(param.percentOverlap / 100))) units apart
-        #
-        action = "extract the segments"
+        # Set the client up for this data center.
         try:
-           #
-           # load startIndex through endIndex - 1
-           #
-           if VERBOSE:
-              print "TIME SEGMENT",startIndex,endIndex,traceTime[startIndex],traceTime[endIndex]
-           timeSegment    = traceTime[startIndex:endIndex]
+            client = Client(ts_lib.get_service_url(cat, _key))
+            st = client.get_waveforms_bulk(cat[_key]['bulk'], attach_response=True)
+        except Exception as ex:
+            msg_lib.warning(script, ex)
 
-           if VERBOSE:
-              print "CHANNEL SEGMENT",startIndex,endIndex
-           channelSegment = trChannel.data[startIndex:endIndex]
-	   nSegCount += 1
+    """Start processing time segments.
 
-           #if VERBOSE:
-           #   SI = int(((timeSegment[0]-traceTime[0])/delta)+0.5)
-           #   print "startIndex,SI:",startIndex,SI
-        except Exception, e:
-           print str(e)
-           msgLib. error("failed to extract segment from location "+str(startIndex)+" to "+str(endIndex)+"\n",0)
-           sys.exit()
+      work on each window duration (1-hour)
 
-        #
-        # remove the mean
-        #
-        action         = "remove mean"
-        channelSegment = channelSegment - np.mean(channelSegment)
+      LOOP: WINDOW
+      RA - note here we are defining the number of time-steps as the number of window shifts
+      that exist within the length of the request-time
 
-        #
-        # apply the taper
-        #
-        action         = "apply the taper"
-        if VERBOSE:
-           print action,len(channelSegment),len(taperWindow)
-        channelSegment = channelSegment * taperWindow
+      flag to only process segments that start at the begining of the window
+    """
+    enforce_window_start = bool(utils_lib.param(param, 'enforceWindowStart').enforceWindowStart)
 
-        #
-        # FFT
-        # data values are real, so the output of FFT is Hermitian symmetric, 
-        # i.e. the negative frequency terms are just the complex conjugates of 
-        # the corresponding positive-frequency terms
-        # We only need the frist half, so doing np.fft.rfft is more efficient
-        #
-             
-        if TIMING:
-           t0 = fileLib.timeIt('start FFT ',t0)
+    # We only want to read as much data as we have in the stream.
+    if st is not None:
+        # When requesting data.
+        st_starttime = max([tr.stats.starttime for tr in st])
+        max_starttime = max(st_starttime, request_start_datetime)
 
-        action     = "FFT"
-        FFT        = np.zeros((nSamp/2)+1, dtype=np.complex)
-        FFT        = np.fft.rfft(channelSegment)
+        st_endtime = max([tr.stats.endtime for tr in st])
+        min_endtime = min(st_endtime, request_end_datetime)
+    else:
+        # When reading files.
+        max_starttime = request_start_datetime
+        min_endtime = request_end_datetime
 
-        #
-        # power
-        #
-        action = "power"
-        m11 += FFT[0:(nSamp/2)+1] * np.conjugate(FFT[0:(nSamp/2)+1])
+    give_warning = True
+    for t_step in range(0, int(duration), int(utils_lib.param(param, 'windowShift').windowShift)):
+        if timing:
+            t0 = utils_lib.time_it('start WINDOW', t0)
 
-        if TIMING:
-           t0 = fileLib.timeIt('got POWER ',t0)
-          
-        #
-        # shift the start index for the next segment with overlap
-        #
-        action = "shift the start index"
-        startIndex += nShift
+        t_start = max_starttime + t_step
+        t_end = t_start + window_length
+        if t_end > min_endtime:
+            t_end = min_endtime
+        if t_end - t_start < window_length:
+            if give_warning:
+                msg_lib.warning(script, f'Interval from {t_start} to {t_end} is shorter than the '
+                                        f'windowLength parameter {window_length} seconds, will skip.')
+                give_warning = False
+            continue
 
-        #
-        ######## Plot the waveform and the selected segment ########
-        #
-        if msgLib.param(param,'plotTraces').plotTraces > 0 and doPlot > 0:
-           action = "Plot"
-           plt.subplot(111)
-           plt.plot(traceTime, trChannel.data, msgLib.param(param,'colorTrace').colorTrace)
-           plt.plot(timeSegment, channelSegment, msgLib.param(param,'colorSmooth').colorSmooth)
-           plt.ylabel(channel+' ['+msgLib.param(param,'unitLabel').unitLabel[channel]+']')
-           plt.xlim(0,msgLib.param(param,'windowLength').windowLength)
-           plt.xlabel('Time [s]')
-           plt.show()
-
-     #
-     # END LOOP SEGMENT, segments are done
-     #
-
-     #
-     # average the spectra matrix over the subwindows
-     #
-     action = "average the spectra matrix"
-
-     #
-     # to convert FFT to PSD
-     #
-     # The power based on the FFT values (X) 
-     # This power is calculated over Nyquist 1/(2*dt) and we have N equispaced frequency samples. Therefore:
-     # PSD = (X^2)/ [1/(2*dt)] / N
-     # PSD = (X^2 * 2 * dt / N) 
-     #
-     norm  = 2.0 * delta /  float(nSamp)
-     norm *= msgLib.param(param,'normFactor').normFactor
-     if VERBOSE:
-        print "\n\nDELTA:",delta
-        print "NSAMP:",nSamp
-        print "NORM:",norm
-
-     if VERBOSE:
-        print "DELTA: "+str(delta)+"\n"
-        print "nSegCount: "+str(nSegCount)+"\n\n"
-
-     #
-     # average
-     #
-     m11      /= float(nSegCount)
-     power     = norm * np.abs(m11[0:(nSamp/2)+1])
-
-     #
-     # if power is not populated, skip LOOP WINDOW or this 1 -hour window
-     #
-     if len(power) <= 0:
-        continue
- 
-             
-     smoothX    = []
-     smoothPSD  = []
-
-     #
-     # smoothing
-     #
-     if TIMING:
-        t0 = fileLib.timeIt('start SMOOTHING ',t0)
-
-     print "[INFO] SMOOTHING window "+str(msgLib.param(param,'octaveWindowWidth').octaveWindowWidth)+" shift "+str(msgLib.param(param,'octaveWindowShift').octaveWindowShift)
-     if xType == "period":
-        #
-        # 10.0*maxT to avoid 1.0/0.0 at zero frequency
-        #
-        period    = np.append([10.0*msgLib.param(param,'maxT').maxT],1.0/(np.arange(1.0,(nSamp/2)+1)/float(nSamp * delta)))
-        if str(msgLib.param(param,'xStart').xStart[plotIndex]) == 'Nyquist':
-           smoothX,smoothPSD       = SFL.smoothNyquist(xType,period,power,samplingFrequency, msgLib.param(param,'octaveWindowWidth').octaveWindowWidth, 
-                                     msgLib.param(param,'octaveWindowShift').octaveWindowShift, msgLib.param(param,'maxT').maxT)
+        segment_start = t_start.strftime('%Y-%m-%d %H:%M:%S.0')
+        segment_start_year = t_start.strftime('%Y')
+        segment_start_doy = t_start.strftime('%j')
+        segment_end = t_end.strftime('%Y-%m-%d %H:%M:%S.0')
+        if request_client == 'FILES':
+            file_tag = file_lib.get_tag(".", [request_network, request_station, request_location, request_channel])
+            msg_lib.info(f'Reading '
+                         f'{file_tag} '
+                         f'from {segment_start} to {segment_end} '
+                         f'from {utils_lib.param(param, "requestClient").requestClient} stream')
         else:
-           smoothX,smoothPSD       = SFL.smoothT(period,power,samplingFrequency, msgLib.param(param,'octaveWindowWidth').octaveWindowWidth, 
-                                     msgLib.param(param,'octaveWindowShift').octaveWindowShift, msgLib.param(param,'maxT').maxT,float(msgLib.param(param,'xStart').xStart[plotIndex]))
-     else:
-        frequency = np.array( np.arange(0,(nSamp/2)+1)/float(nSamp * delta))
+            file_tag = file_lib.get_tag(".", [request_network, request_station, request_location, request_channel])
+            msg_lib.info(f'Reading '
+                         f'{file_tag} '
+                         f'from {segment_start} to {segment_end} '
+                         f'from {utils_lib.param(param, "requestClient").requestClient} stream')
 
-        if str(msgLib.param(param,'xStart').xStart[plotIndex]) == 'Nyquist':
-           smoothX,smoothPSD       = SFL.smoothNyquist(xType,frequency,power,samplingFrequency, msgLib.param(param,'octaveWindowWidth').octaveWindowWidth, 
-                                     msgLib.param(param,'octaveWindowShift').octaveWindowShift, minFrequency)
+        # Read from files but request response via Files and/or WS.
+        if request_client == 'FILES':
+            useClient = client
+            if not internet:
+                useClient = None
+            inventory, stream = ts_lib.get_channel_waveform_files(request_network, request_station,
+                                                                  request_location, request_channel,
+                                                                  segment_start, segment_end, useClient,
+                                                                  utils_lib.param(param, 'fileTag').fileTag,
+                                                                  resp_dir=response_directory)
         else:
-           smoothX,smoothPSD       = SFL.smoothF(frequency,power,samplingFrequency, msgLib.param(param,'octaveWindowWidth').octaveWindowWidth, 
-                                     msgLib.param(param,'octaveWindowShift').octaveWindowShift, minFrequency,float(msgLib.param(param,'xStart').xStart[plotIndex]))
+            stream = st.slice(starttime=t_start, endtime=t_end, keep_empty_traces=False, nearest_sample=True)
 
-     if TIMING:
-        t0 = fileLib.timeIt("SMOOTHING window "+str(msgLib.param(param,"octaveWindowWidth").octaveWindowWidth)+" shift "+str(msgLib.param(param,"octaveWindowShift").octaveWindowShift)+" DONE",t0)
-
-     #
-     # convert to dB
-     #
-     power     = 10.0 * np.log10(power[0:(nSamp/2)+1])
-     smoothPSD = 10.0 * np.log10(smoothPSD)
-
-     #
-     # create output paths if they do not exist
-     #
-     if msgLib.param(param,'outputValues').outputValues > 0:
-        filePath, psdFileTag = fileLib.getDir(msgLib.param(param,'dataDirectory').dataDirectory,msgLib.param(param,'psdDbDirectory').psdDbDirectory,network,station,location,channel)
-        filePath = os.path.join(filePath,segmentStartYear,segmentStartDOY)
-        fileLib.makePath(filePath)
-
-        #
-        # output is based on the xType
-        #
-        if VERBOSE:
-           print "trChannel.stats:",str(trChannel.stats)
-           print "REQUEST:",segmentStart
-           print "TRACE:",str(trChannel.stats.starttime).replace("Z","")
-           print "DELTA:",trChannel.stats.delta
-           print "SAMPLES:",int(float(msgLib.param(param,'windowLength').windowLength)/float(trChannel.stats.delta) +1)
-
-        tagList = [psdFileTag,str(trChannel.stats.starttime).replace("Z",""),str(msgLib.param(param,'windowLength').windowLength),xType]
-        with open(fileLib.getFileName(msgLib.param(param,'namingConvention').namingConvention,filePath,tagList), "w") as file:
-
-           #
-           # Header
-           #
-           file.write("%s %s\n" % (xUnits,powerUnits))
-
-           #
-           # data
-           #
-           for i in xrange(0,len(smoothX)):
-               file.write("%11.6f %11.4f\n" % (float(smoothX[i]),float(smoothPSD[i])))
-
-        file.closed
-
-     #
-     ######## Plot ########
-     #
-     if (msgLib.param(param,'plotSpectra').plotSpectra > 0 or msgLib.param(param,'plotSmooth').plotSmooth>0) and doPlot>0:
-        action = "Plot 2"
-
-        if TIMING:
-           t0 = fileLib.timeIt('start PLOT ',t0)
-
-        if VERBOSE:
-           print "POWER: "+str(len(power))+"\n"
-
-        fig = plt.figure()
-        fig.subplots_adjust(hspace=.2)
-        fig.subplots_adjust(wspace=.2)
-        fig.set_facecolor('w')
-
-        ax311 = plt.subplot(111)
-        ax311.set_xscale('log')
-
-        #
-        # period for the x-axis
-        #
-        if xType == "period":
-           if msgLib.param(param,'plotSpectra').plotSpectra:
-              plt.plot(period, power, msgLib.param(param,'colorSpectra').colorSpectra)
-           if msgLib.param(param,'plotSmooth').plotSmooth:
-              plt.plot(smoothX, smoothPSD, color=msgLib.param(param,'colorSmooth').colorSmooth, lw=3)
-
-        #
-        # frequency for the x-axis
-        #
+        if stream is None:
+            code = msg_lib.error(f'No data in stream', 4)
+            sys.exit(code)
         else:
-           if msgLib.param(param,'plotSpectra').plotSpectra:
-              plt.plot(frequency, power, msgLib.param(param,'colorSpectra').colorSpectra)
-           if msgLib.param(param,'plotSmooth').plotSmooth:
-              plt.plot(smoothX, smoothPSD, color=msgLib.param(param,'colorSmooth').colorSmooth, lw=3)
+            msg_lib.info(f'{script} {str(stream)}')
 
-        plt.xlabel(xUnits)
-        plt.xlim(msgLib.param(param,'xlimMin').xlimMin[channel][plotIndex],msgLib.param(param,'xlimMax').xlimMax[channel][plotIndex])
-        plt.ylabel(channel + " " + powerUnits)
-        plt.ylim([msgLib.param(param,'ylimLow').ylimLow[channel],msgLib.param(param,'ylimHigh').ylimHigh[channel]])
-        plt.title(station+" from "+segmentStart+" to "+segmentEnd)
+        for tr in stream:
 
-        if TIMING:
-           t0 = fileLib.timeIt('show PLOT ',t0)
+            network = tr.stats.network
+            station = tr.stats.station
+            location = sta_lib.get_location(tr.stats.location)
+            channel = tr.stats.channel
+            if verbose:
+                msg_lib.info(f'Response: {tr.stats}')
+            if channel == 'BDF':
+                powerUnits = utils_lib.param(param, 'powerUnits').powerUnits['PA']
+            else:
+                powerUnits = utils_lib.param(param, 'powerUnits').powerUnits[
+                    tr.stats.response.instrument_sensitivity.input_units]
 
-        plt.show()
+            xUnits = utils_lib.param(param, 'xlabel').xlabel[xtype.lower()]
+            traceKey = file_lib.get_tag('.', [network, station, location, channel])
+
+            # We first need to define the length of sub-windows based on the user-specified parameters
+
+            n_points = tr.stats.npts
+            sampling_frequency = tr.stats.sampling_rate
+            delta = float(tr.stats.delta)
+
+            # Number of samples per window is obtained by dividing the total number of samples
+            # by the number of side-by-side time windows along the trace
+
+            # First calculate the number of points needed based on the run parameters
+            #
+            # AR + RA - Integer operation will always round down - so add 1
+            this_n_samp = int((window_length / delta + 1) / utils_lib.param(param, 'nSegWindow').nSegWindow)
+            n_samp_needed = 2 ** int(math.log(this_n_samp, 2))  # make sure it is power of 2
+            if verbose:
+                msg_lib.info(f'nSamp Needed:{n_samp_needed}')
+
+            # Next calculate the number of points needed based on the trace parameters.
+            this_n_samp = int(n_points / utils_lib.param(param, 'nSegWindow').nSegWindow)
+
+            # Avoid log of bad numbers.
+            if this_n_samp <= 0:
+                msg_lib.warning('FFT',
+                                f'needed {n_samp_needed}'
+                                ' smples but no samples are available, will skip this trace')
+                continue
+            nfft = 2 ** int(math.log(this_n_samp, 2))  # make sure it is power of 2
+
+            if verbose:
+                msg_lib.info(f'nSamp Available: {nfft}')
+
+            if nfft < n_samp_needed:
+                msg_lib.warning('FFT', f'needed {n_samp_needed} samples but only '
+                                       f'{nfft} samples are available, will skip this trace')
+                continue
+
+            # see if segment starts within less than a sample from the beginning of window
+            if enforce_window_start and abs(tr.stats.starttime - t_start) > delta:
+                msg_lib.warning('FFT', f'parameter enforce_window_start is set '
+                                       f'and the segment does not start within less '
+                                       f'than a sample from the beginning of window, will skip this trace')
+                continue
+
+            # Define sub-window overlap based on user specified parameters - convert to decimal percentage
+            windlap = utils_lib.param(param, 'percentOverlap').percentOverlap * (1. / 100)
+            csd_label = f'power spectral density \n{window_length} s window / {windlap * 100}% overlap'
+
+            # Do the CSD
+            power, freq = csd(tr.data, tr.data, NFFT=nfft,
+                              noverlap=nfft * windlap, Fs=1. / delta,
+                              scale_by_freq=True)
+
+            # Remove first Point
+            freq = freq[1:]
+            power = power[1:]
+
+            period = 1. / freq
+
+            # make power a real quantity
+            power = np.abs(power)
+
+            # Remove the Response
+            resp, freqs = tr.stats.response.get_evalresp_response(delta,
+                                                                  nfft, output=utils_lib.param(param, 'unit').unit)
+            resp = abs(resp)
+            resp = resp[1:]
+
+            power = power / (np.abs(resp) ** 2)
+
+            smooth_x = []
+            smooth_psd = []
+
+            # Smoothing.
+            if timing:
+                t0 = utils_lib.time_it('start SMOOTHING ', t0)
+
+            msg_lib.info(f'SMOOTHING window {octave_window_width} shift '
+                         f'{octave_window_shift}')
+            if xtype == 'period':
+                #
+                if str(utils_lib.param(param, 'xStart').xStart[plot_index]) == 'Nyquist':
+                    smooth_x, smooth_psd = sf_lib.smooth_nyquist(xtype, period, power, sampling_frequency,
+                                                                 octave_window_width,
+                                                                 octave_window_shift,
+                                                                 utils_lib.param(param, 'maxT').maxT)
+                else:
+                    smooth_x, smooth_psd = sf_lib.smooth_period(period, power, sampling_frequency,
+                                                                octave_window_width,
+                                                                octave_window_shift,
+                                                                utils_lib.param(param, 'maxT').maxT,
+                                                                float(utils_lib.param(param, 'xStart').xStart[
+                                                                          plot_index]))
+            else:
+                frequency = np.array(np.arange(1, (nfft / 2) + 1) / float(nfft * delta))
+
+                if str(utils_lib.param(param, 'xStart').xStart[plot_index]) == 'Nyquist':
+                    smooth_x, smooth_psd = sf_lib.smooth_nyquist(xtype, frequency, power, sampling_frequency,
+                                                                 octave_window_width,
+                                                                 octave_window_shift,
+                                                                 min_frequency)
+                else:
+                    smooth_x, smooth_psd = sf_lib.smooth_frequency(frequency, power, sampling_frequency,
+                                                                   octave_window_width,
+                                                                   octave_window_shift,
+                                                                   min_frequency,
+                                                                   float(
+                                                                       utils_lib.param(param, 'xStart').xStart[
+                                                                           plot_index]))
+
+            if timing:
+                t0 = utils_lib.time_it(
+                    f'SMOOTHING window {octave_window_width} shift '
+                    f'{octave_window_shift} DONE', t0)
+
+            # get the response information
+
+            msg_lib.info(tr.stats.response)
+
+            # Convert to dB.
+            power = 10.0 * np.log10(power)
+            smooth_psd = 10.0 * np.log10(smooth_psd)
+
+            # Create output paths if they do not exist.
+            if utils_lib.param(param, 'outputValues').outputValues > 0:
+                filePath, psd_file_tag = file_lib.get_dir(data_directory,
+                                                          psd_db_directory,
+                                                          network,
+                                                          station, location, channel)
+                filePath = os.path.join(filePath, segment_start_year, segment_start_doy)
+                file_lib.make_path(filePath)
+
+                # Output is based on the xtype.
+                if verbose:
+                    msg_lib.info(f'trChannel.stats: {tr.stats} '
+                                 f'REQUEST: {segment_start} '
+                                 f'TRACE: {tr.stats.starttime.strftime("%Y-%m-%dT%H:%M:%S")} '
+                                 f'DELTA: {tr.stats.delta} '
+                                 f'SAMPLES: '
+                                 f'{int(window_length / float(tr.stats.delta) + 1)} ')
+
+                time_label = tr.stats.starttime.strftime('%Y-%m-%dT%H:%M:%S')
+                tagList = [psd_file_tag, time_label,
+                           f'{window_length}', xtype]
+                output_file_name = file_lib.get_file_name(utils_lib.param(
+                    param, 'namingConvention').namingConvention, filePath, tagList)
+                msg_lib.message(f'OUTPUT: writing to {output_file_name}')
+
+                with open(output_file_name,
+                          'w') as output_file:
+
+                    # Output the header.
+                    output_file.write('%s %s\n' % (xUnits, powerUnits))
+
+                    # Output data.
+                    for i_x, v_x in enumerate(smooth_x):
+                        output_file.write(f'{float(smooth_x[i_x]):11.6f} {float(smooth_psd[i_x]):11.4f}\n')
+
+            # Start plotting.
+            if (utils_lib.param(param, 'plotSpectra').plotSpectra > 0 or utils_lib.param(param,
+                                                                                         'plotSmooth').plotSmooth > 0) \
+                    and do_plot:
+                action = 'Plot 2'
+
+                if timing:
+                    t0 = utils_lib.time_it('start PLOT ', t0)
+
+                if verbose:
+                    msg_lib.info('POWER: ' + str(len(power)) + '\n')
+
+                fig = plt.figure()
+                fig.subplots_adjust(hspace=.2)
+                fig.subplots_adjust(wspace=.2)
+                fig.set_facecolor('w')
+
+                ax311 = plt.subplot(111)
+                ax311.set_xscale('log')
+                plabel_x, plabel_y = shared.production_label_position
+                ax311.text(plabel_x, plabel_y, production_label, horizontalalignment='left', fontsize=5,
+                           verticalalignment='top',
+                           transform=ax311.transAxes)
+
+                if do_plot_nnm:
+                    nlnm_x, nlnm_y = get_nlnm()
+                    nhnm_x, nhnm_y = get_nhnm()
+                    if xtype != 'period':
+                        nlnm_x = 1.0 / nlnm_x
+                        nhnm_x = 1.0 / nhnm_x
+                    plt.plot(nlnm_x, nlnm_y, lw=1, ls=':', c='k', label='NLNM, NHNM')
+                    plt.plot(nhnm_x, nhnm_y, lw=1, ls=':', c='k')
+
+                # Period for the x-axis.
+                if xtype == 'period':
+                    if utils_lib.param(param, 'plotSpectra').plotSpectra:
+                        plt.plot(period, power, utils_lib.param(param, 'colorSpectra').colorSpectra, label=csd_label)
+                    if utils_lib.param(param, 'plotSmooth').plotSmooth:
+                        plt.plot(smooth_x, smooth_psd, color=utils_lib.param(param, 'colorSmooth').colorSmooth,
+                                 label=smoothing_label)
+
+                # Frequency for the x-axis.
+                else:
+                    if utils_lib.param(param, 'plotSpectra').plotSpectra:
+                        plt.plot(frequency, power, utils_lib.param(param, 'colorSpectra').colorSpectra, label=csd_label)
+                    if utils_lib.param(param, 'plotSmooth').plotSmooth:
+                        plt.plot(smooth_x, smooth_psd, color=utils_lib.param(param, 'colorSmooth').colorSmooth,
+                                 label=smoothing_label)
+
+                plt.xlabel(xUnits)
+                try:
+                    plt.xlim(utils_lib.param(param, 'xlimMin').xlimMin[channel][plot_index],
+                             utils_lib.param(param, 'xlimMax').xlimMax[channel][plot_index])
+                except Exception as ex:
+                    msg_lib.warning(script, f'xlimMin, xlimMax parameter error {ex}')
+
+                plt.ylabel(channel + ' ' + powerUnits)
+
+                try:
+                    plt.ylim(
+                        [utils_lib.param(param, 'ylimLow').ylimLow[channel],
+                         utils_lib.param(param, 'ylimHigh').ylimHigh[channel]])
+                except Exception as ex:
+                    msg_lib.warning(script, f'ylimLow, ylimHigh parameter error {ex}')
+
+                plt.title(f'{network}.{station}.{location}.{channel} from  {segment_start} to {segment_end}', size=10)
+
+                if timing:
+                    t0 = utils_lib.time_it('show PLOT ', t0)
+                x, y = shared.production_label_position
+                ax311.legend(frameon=False, prop={'size': 6})
+                plt.show()
 t0 = t1
-print " "
-t0 = fileLib.timeIt("END",t0)
-print " "
+t0 = utils_lib.time_it('END', t0)
