@@ -1,23 +1,23 @@
-import os
-import common
+import shared
 
-#
-# how file naming is done
-#
-namingConvention = common.namingConvention
+# How file naming is done?
+namingConvention = shared.namingConvention
 
-#
-# initialize a few parametrs
-#
-# PSD files are all HOURLY files with 50% overlap
-#
-VERBOSE              = 0         # thurn the verbose mode on or off
-ntkDirectory         = common.ntkDirectory
-dataDirectory        = common.dataDirectory
-psdDbDirectory       = common.psdDbDirectory
-pdfDirectory         = common.pdfDirectory
-pdfHourlySave        = 1
-pdfHourlyDirectory   = "HOUR"
-intNan               = -999999
-separator            = '\t' # separator character used in output
+# Turn the verbose mode on or off (1/0).
+verbose = 0
+
+# Directories.
+ntkDirectory = shared.ntkDirectory
+dataDirectory = shared.dataDirectory
+psdDbDirectory = shared.psdDbDirectory
+pdfDirectory = shared.pdfDirectory
+pdfHourlyDirectory = "HOUR"
+
+# Turn hourly file output on/off (1/0).
+pdfHourlySave = 1
+
+intNan = -999999
+
+# delimiter character used in output.
+separator = '\t'
 

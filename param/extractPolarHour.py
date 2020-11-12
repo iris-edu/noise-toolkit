@@ -1,25 +1,35 @@
-import os
-import common
+import shared
+import computePolarization
 
-#
-# initialize a few parametrs
-#
-# PSD files are all HOURLY files with 50% overlap
-#
-VERBOSE          = 0         # thurn the verbose mode on or off
-namingConvention = common.namingConvention
-ntkDirectory     = common.ntkDirectory
-dataDirectory    = common.dataDirectory
-polarDirectory   = common.polarDirectory
-polarDbDirectory = common.polarDbDirectory
-separator        = '\t' # separator character used in output
-variables        = ["powerUD","powerEW","powerNS","powerLambda","betaSquare","thetaH","thetaV","phiVH","phiHH"]
-decimalPlaces    = {"powerUD":0, # number of decimal places in the output file
-                    "powerEW":0,
-                    "powerNS":0,
-                    "powerLambda":0,
-                    "betaSquare":1,
-                    "thetaH":0,
-                    "thetaV":0,
-                    "phiVH":0,
-                    "phiHH":0}
+# Turn the verbose mode on or off (1/0).
+verbose = 0
+
+# Use 'WINDOWS' or 'PQLX' file naming convention?
+namingConvention = shared.namingConvention
+
+# Directories.
+ntkDirectory = shared.ntkDirectory
+dataDirectory = shared.dataDirectory
+polarDirectory = shared.polarDirectory
+polarDbDirectory = shared.polarDbDirectory
+chanDir = 'BHZ_BHE_BHN'
+
+# Possible x-axis types.
+xType = computePolarization.xType
+
+# Delimiter character used for output.
+separator = '\t'
+
+# Variables to extract.
+variables = computePolarization.variables
+
+# Number of decimal places in the output file.
+decimalPlaces = {'powerUD': 0,
+                 'powerEW': 0,
+                 'powerNS': 0,
+                 'powerLambda': 0,
+                 'betaSquare': 1,
+                 'thetaH': 0,
+                 'thetaV': 0,
+                 'phiVH': 0,
+                 'phiHH': 0}
