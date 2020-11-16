@@ -109,7 +109,7 @@ def usage():
           f'\n\nExamples:'
           f'\n\n\t- usage:'
           f'\n\tpython {script}'
-          f'\n\n\t- Assuming that you already have tried the following ntk_compute_PSD.py example:'
+          f'\n\n\t- Assuming that you already have tried the following ntk_compute_PSD.py example "successfully":'
           f'\n\tpython ntk_computePSD.py net=TA sta=O18A loc=DASH start=2008-08-14T12:00:00 end=2008-08-14T13:30:00'
           f'\n\n\tyou can perform PSD extraction via:'
           f'\n\tpython {script} net=TA sta=O18A loc=DASH chan=BHZ start=2008-08-14T12:00:00 '
@@ -151,12 +151,22 @@ xtype = utils_lib.get_param(args, 'xtype', None, usage)
 start_date_time = utils_lib.get_param(args, 'start', None, usage)
 start_date_time = start_date_time.split('T')[0]
 start_year, start_month, start_day = start_date_time.split('-')
-start_datetime = UTCDateTime(start_date_time)
+try:
+    start_datetime = UTCDateTime(start_date_time)
+except Exception as ex:
+    usage()
+    code = msg_lib.error(f'Invalid start ({start_date_time})\n{ex}', 2)
+    sys.exit(code)
 
 end_date_time = utils_lib.get_param(args, 'end', None, usage)
 end_date_time = end_date_time.split('T')[0]
 end_year, end_month, end_day = end_date_time.split('-')
-end_datetime = UTCDateTime(end_date_time) + 86400
+try:
+    end_datetime = UTCDateTime(end_date_time) + 86400
+except Exception as ex:
+    usage()
+    code = msg_lib.error(f'Invalid end ({end_date_time})\n{ex}', 2)
+    sys.exit(code)
 
 delta = date(int(end_year), int(end_month), int(end_day)) - \
         date(int(start_year), int(start_month), int(start_day))

@@ -92,7 +92,8 @@ windowShift = int(windowLength * 0.5)
 
 #  NOTE: make sure that components in each group are in the CORRECT order (BHZ, BHE, BHN)
 channel = "BH?"
-channelGroups = [["BHZ", "BHE", "BHN"], ["BHZ", "BH2", "BH1"]]
+channelGroups = [["BHZ", "BHE", "BHN"], ["BHZ", "BH2", "BH1"], ["LHZ", "LHE", "LHN"], ["LHZ", "LH2", "LH1"],
+                 ["HHZ", "HHE", "HHN"], ["HHZ", "HH2", "HH1"]]
 
 performInstrumentCorrection = True
 demean = True

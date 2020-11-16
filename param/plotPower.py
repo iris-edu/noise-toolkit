@@ -25,8 +25,9 @@ binIndex = power.binIndex
 plotSize = (10, 6)
 columnTag = ['Period',  'Power']
 columnLabel = ['Period',  'dB']
-dotColor = ['blue', 'green', 'red', 'cyan', 'magenta', 'yellow']
-dotSize = [0.3, 0.3, 0.3, 0.3, 0.3, 0.3]
+# dotColor = ['blue', 'green', 'red', 'cyan', 'magenta', 'yellow']
+dotColor = ['C0', 'C1', 'C3', 'C2', 'C4', 'C5', 'C6', 'C7']
+dotSize = [0.3, 0.3, 0.3, 0.3, 0.3, 0.3, 0.3, 0.3]
 
 # Column 0, blank column just to keep stuff in order
 rangeLabel = list()

@@ -43,7 +43,7 @@
   RUNNING THE SCRIPTS:
  
      see the package SeisCode Wiki page for instructions and examples:
-        https://github.com/iris-edu/noise-toolkit/wiki/Noise-Toolkit-Polarization-Attributes-package
+        https://github.com/iris-edu/noise-toolkit/wiki/Noise-Toolkit-Polarization-Attributes-package-V.2
 
   NOTES 
  
@@ -51,7 +51,7 @@
          .visit data product's web page at:
             http://ds.iris.edu/ds/products/noise-toolkit-polarization/
          .visit data product's Wiki page at:
-            https://github.com/iris-edu/noise-toolkit/wiki/Noise-Toolkit-Polarization-Attributes-package
+            https://github.com/iris-edu/noise-toolkit/wiki/Noise-Toolkit-Polarization-Attributes-package-V.2
  
   HISTORY
      - 2020-11-16 V.2.0.0: Python 3, use of Fedcatalog and adoption of PEP 8 style guide

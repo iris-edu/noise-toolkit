@@ -30,13 +30,13 @@ plotSpectra = 1
 plotNm = 1
 
 # Spectra plot color.
-colorSpectra = 'blue'
+colorSpectra = 'tab:blue'
 
 # Plot the smoothed spectra (0/1)?
 plotSmooth = 1
 
 # smoothed spectra color.
-colorSmooth = 'red'
+colorSmooth = 'tab:red'
 
 # Output the smoothed values.
 outputValues = 1
@@ -81,12 +81,24 @@ windowShift = int(windowLength * 0.5)
 channel = 'BH?'
 # channel = 'BDF'
 
-# Plot parameters.
-ylimLow = {'BHZ': -200, 'BHN': -200, 'BHE': -200, 'BH1': -200, 'BH2': -200, 'BDF': -80}
-ylimHigh = {'BHZ': -100, 'BHN': -100, 'BHE': -100, 'BH1': -50, 'BH2': -50, 'BDF': 50}
-xlimMin = {'BHZ': [0.05, 0.01], 'BHN': [0.05, 0.01], 'BHE': [0.05, 0.01], 'BH1': [0.05, 0.01],
-           'BH2': [0.05, 0.01], 'BDF': [0.05, 0.01]}
-xlimMax = {'BHZ': [100.0, 20.0], 'BHN': [100.0, 20.0], 'BHE': [100.0, 20.0], 'BH1': [100.0, 20.0],
+# Plot parameters for xtype ['period', 'frequency'].
+ylimLow = {'LHZ': -200, 'LHN': -200, 'LHE': -200,
+           'LH1': -200, 'LH2': -200, 
+           'BHZ': -200, 'BHN': -200, 'BHE': -200, 
+           'BH1': -200, 'BH2': -200,
+           'HHZ': -200, 'HHN': -200, 'HHE': -200,
+           'HH1': -200, 'HH2': -200,
+           'BDF': -80}
+ylimHigh = {'LHZ': -100, 'LHN': -100, 'LHE': -100, 'LH1': -50, 'LH2': -50,
+            'BHZ': -100, 'BHN': -100, 'BHE': -100, 'BH1': -50, 'BH2': -50,
+            'HHZ': -100, 'HHN': -100, 'HHE': -100, 'HH1': -50, 'HH2': -50, 
+            'BDF': 50}
+xlimMin = {'LHZ': [5.0, 0.01], 'LHN': [5.0, 0.01], 'LHE': [5.0, 0.01], 'LH1': [5.0, 0.01], 'LH2': [5.0, 0.01],
+           'BHZ': [0.05, 0.01], 'BHN': [0.05, 0.01], 'BHE': [0.05, 0.01], 'BH1': [0.05, 0.01], 'BH2': [0.05, 0.01],
+           'HHZ': [1.0, 0.01], 'HHN': [1.0, 0.01], 'HHE': [1.0, 0.01], 'HH1': [1.0, 0.01], 'HH2': [1.0, 0.01],
+           'BDF': [0.05, 0.01]}
+xlimMax = {'LHZ': [100.0, 1.0], 'LHN': [100.0, 1.0], 'LHE': [100.0, 1.0], 'LH1': [100.0, 1.0],
+           'BHZ': [100.0, 20.0], 'BHN': [100.0, 20.0], 'BHE': [100.0, 20.0], 'BH1': [100.0, 20.0],
            'BH2': [100.0, 20.0], 'BDF': [100.0, 20.0]}
 
 """ The requestClient to call to get the waveforms from (FDSN, IRIS or FILES). 

@@ -91,7 +91,7 @@ def usage():
           f'\n\t  chan\t\t[required] channel ID'
           f'\n\t  bin\t\t[required] bin to process(name as defined in the parameter file)'
           f'\n\t  ymax\t\tmaximum value for the y-axis'
-          f'\n\t  file\t\t[reqiuired] the median PSD power file '
+          f'\n\t  file\t\t[required] the median PSD power file '
           f'frequency for outputs and plots)'
           f'\n\t  start\t\t[required] start date-time (UTC) for extraction '
           f'(format YYYY-MM-DDTHH:MM:SS)'
@@ -114,8 +114,6 @@ def usage():
           f'\n\n\t 2       5-10 secondary microseism '
           f'\n\n\t 3      11-30 primary microseism'
           f'\n\n\t 4     50-200 Earth hum'
-          f'\n\texamples:'
-          f'\n\t\tNM_SLM_--_BHE_2010-01-01T00:00:00.035645_3600_period.txt'
           f'\n\nExamples:'
           f'\n\n\t- usage:'
           f'\n\tpython {script}'
@@ -138,7 +136,7 @@ def usage():
           f'file=NM.SLM.--.BHZ.2009-03-01.2009-03-31.txt verbose=0'  
           f'\n\n\tNow, plot the Secondary Microseism, SM :'
           f'\n\t\tpython {script} param={default_param_file} param=plotPower net=NM sta=SLM loc=DASH chan=BHZ '
-          f'start=2009-03-01T00:00:00 end=2009-03-31T00:00:00 win=12 bin=SM ymax=3 '
+          f'start=2009-03-01T00:00:00 end=2009-03-31T00:00:00 win=12 bin=SM '
           f'file=NM.SLM.--.BHZ.2009-03-01.2009-03-31.12h.txt ymax=0.06 bin=SM'
           f'\n\n\n\n')
 
@@ -181,8 +179,8 @@ months = MonthLocator()
 days = DayLocator()
 weeks = WeekdayLocator(byweekday=MONDAY, interval=1)
 yearsFmt = DateFormatter('%Y')
-monthsFmt = DateFormatter('%m/%Y')
-daysFmt = DateFormatter('%m/%d')
+monthsFmt = DateFormatter('%Y-%m')
+daysFmt = DateFormatter('%m-%d')
 
 # Read the parameters from the configuration file.
 columnTag = param.columnTag
@@ -235,11 +233,11 @@ image_tag = param.imageTag[binIndex]
 yLabel = rangeLabel + factorLabel
 
 file_name = utils_lib.get_param(args, 'file', None, usage)
-startYear = int(start_date_time.split("-")[0])
+start_year = int(start_date_time.split("-")[0])
 xStartL = start_date_time.split('T')[0]
 
 end_date_time = end_date_time
-endYear = int(end_date_time.split("-")[0])
+end_year = int(end_date_time.split("-")[0])
 xEndL = end_date_time.split('T')[0]
 
 xminL = datetime.datetime(int(xStartL.split('-')[0]), int(xStartL.split('-')[1]), int(xStartL.split('-')[2]), 0, 0, 0)
@@ -329,7 +327,7 @@ xEnd = datetime.datetime(int(xEndL.split('-')[0]), int(xEndL.split('-')[1]), int
 
 for i in range(0, 1):
     ax = fig.add_subplot(1, 1, i + 1)
-    ax.text(plabel_x, -0.5 * plabel_y, production_label, horizontalalignment='left', fontsize=5, verticalalignment='top',
+    ax.text(plabel_x, 2 * plabel_y, production_label, horizontalalignment='left', fontsize=5, verticalalignment='top',
             transform=ax.transAxes)
 
     if verbose:

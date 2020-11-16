@@ -173,7 +173,7 @@ def usage():
           f'start=2009-03-01T00:00:00 end=2009-03-31T00:00:00 xtype=period plot=0 verbose=0'
           f'\n\n\t- try other stations and time intervals:'
           f'\n\tpython {script} net=NM sta=SLM loc=DASH chan=BHZ start=2009-11-01T12:00:00 '
-          f'end=2009-11-01T13:00:00 xtype=period plot=1'
+          f'end=2009-11-01T14:00:00 xtype=period plot=1'
           f'\n\tpython {script} param=computePSD net=TA sta=959A loc=DASH start=2013-10-01T11:00:00 '
           f'end=2013-10-01T13:00:00 xtype=period plot=1'
           f'\n\n\t- BHZ channel for GR.BFO with data from a data center other than IRIS:'
@@ -328,18 +328,28 @@ inventory = None
 # Less than 3 characters station name triggers wildcards.
 if len(request_station) <= 2:
     if request_client == 'IRIS':
-        msg_lib.error('Invalid station name (for IRIS client, wildcards are not accepted. '
-                      'Please use full station name)', 2)
-        sys.exit()
+        code = msg_lib.error('Invalid station name (for IRIS client, wildcards are not accepted. '
+                             'Please use full station name)', 2)
+        sys.exit(code)
 
     request_station = f'*{request_station}*'
 
 # Specific start and end date and times from user.
 request_start_date_time = utils_lib.get_param(args, 'start', None, usage)
-request_start_datetime = UTCDateTime(request_start_date_time)
+try:
+    request_start_datetime = UTCDateTime(request_start_date_time)
+except Exception as ex:
+    usage()
+    code = msg_lib.error(f'Invalid start ({request_start_date_time})\n{ex}', 2)
+    sys.exit(code)
 
 request_end_date_time = utils_lib.get_param(args, 'end', None, usage)
-request_end_datetime = UTCDateTime(request_end_date_time)
+try:
+    request_end_datetime = UTCDateTime(request_end_date_time)
+except Exception as ex:
+    usage()
+    code = msg_lib.error(f'Invalid end ({request_end_date_time})\n{ex}', 2)
+    sys.exit(code)
 
 if timing:
     t0 = utils_lib.time_it('request info', t0)
@@ -352,9 +362,9 @@ msg_lib.info(f'Requesting {request_network}.{request_location}.{request_station}
 try:
     plot_index = utils_lib.param(param, 'xtype').xtype.index(xtype)
 except Exception as e:
-    msg_lib.error(f'Invalid plot type ({xtype})\n{e}', 2)
     usage()
-    sys.exit()
+    code = msg_lib.error(f'Invalid plot type ({xtype})\n{e}', 2)
+    sys.exit(code)
 
 if timing:
     t0 = utils_lib.time_it('parameters', t0)
@@ -679,8 +689,7 @@ for _key in cat:
                     param, 'namingConvention').namingConvention, filePath, tagList)
                 msg_lib.message(f'OUTPUT: writing to {output_file_name}')
 
-                with open(output_file_name,
-                          'w') as output_file:
+                with open(output_file_name, 'w') as output_file:
 
                     # Output the header.
                     output_file.write('%s %s\n' % (xUnits, powerUnits))

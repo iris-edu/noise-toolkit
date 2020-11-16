@@ -600,6 +600,7 @@ def qc_3c_stream(stream, segment_length, window, sorted_channel_list, channel_gr
 
                 # End of the QC save qc_passed flag.
                 if qc_passed:
+                    chan_group_found = False
                     # qc_record_list provides index of the record for each channel_groups element.
                     for chans in channel_groups:
                         # found the matching channel group?
@@ -608,15 +609,16 @@ def qc_3c_stream(stream, segment_length, window, sorted_channel_list, channel_gr
                             msg_lib.info(f'{sender}, output channel order should be {chans}')
                             ordered_group_records = list()
                             group_channels_list = group_channels[rec_index]
+                            chan_group_found = True
                             for chan in chans:
                                 qc_record_list.append(group_channels_list.index(chan))
                             break
-                        else:
-                            code = msg_lib.error(f'{sender}, channel_groups parameter matching the '
-                                                 f'output channel order [{group_channels[rec_index][0]}, '
-                                                 f'{group_channels[rec_index][1]}, {group_channels[rec_index][2]}] '
-                                                 f'not found', 4)
-                            sys.exit(code)
+                    if not chan_group_found:
+                        code = msg_lib.error(f'{sender}, channel_groups parameter matching the '
+                                             f'output channel order [{group_channels[rec_index][0]}, '
+                                             f'{group_channels[rec_index][1]}, {group_channels[rec_index][2]}] '
+                                             f'not found', 4)
+                        sys.exit(code)
 
     if verbose:
         msg_lib.info(f'{sender}, passed records: {qc_record_list}')

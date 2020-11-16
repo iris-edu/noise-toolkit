@@ -4,7 +4,7 @@
  Noise Toolkit (NTK)
 
  2020-11-16\
- V.2.0 for Python 3
+ V.2.0.0 for Python 3
 
 ------------------------------------------------------------------------------------------------------------------------
 
@@ -37,7 +37,7 @@ Python 3 /ObsPy scripts to:
     - perform frequency dependent polarization analysis of the waveform data (Noise Toolkit Polarization 
       Analysis package)
 
-**PDF/PSD package** (Wiki page, https://github.com/iris-edu/noise-toolkit/wiki/Noise-Toolkit-PDF-PSD-package-2)
+**PDF/PSD package** (Wiki page, https://github.com/iris-edu/noise-toolkit/wiki/Noise-Toolkit-PDF-PSD-package-V.2)
 
 The PDF/PSD package provides three highly configurable Python 3 scripts to calculate waveform spectra. This package takes advantage of FDSN Web service client for ObsPy to retrieve necessary waveform data, and it also allows users to process waveform data from their local files. This package provides PSD file collections similar to popular PQLX package (McNamara and Boaz, 2005, https://www.usgs.gov/software/pqlx-a-software-tool-evaluate-seismic-station-performance). The scripts included in this package are:
 
@@ -51,7 +51,7 @@ The PDF/PSD package provides three highly configurable Python 3 scripts to calcu
       (the output is similar to PQLX's exPSDhour script, https://pubs.usgs.gov/of/2010/1292/)
     - ntk_binPsdDay.py - bins PSD's to daily files for a given channel and bounding parameters.
 
-**Microseism Energy (ME) package** (Wiki page, https://github.com/iris-edu/noise-toolkit/wiki/Noise-Toolkit-Microseism-Energy-(ME)-package-2)
+**Microseism Energy (ME) package** (Wiki page, https://github.com/iris-edu/noise-toolkit/wiki/Noise-Toolkit-Microseism-Energy-(ME)-package-V.2)
 
  Microseism Energy (ME) package is a collection of three Python 3 scripts that are configurable and allow users to conveniently calculate and plot microseism energy temporal variations in the period band of interest using the available PSD values. By default, the package is configured to to calculate ME over 1-5 s band, targeting smaller local storms for coastal stations, 5-10 s for the secondary microseisms, 11-30 s for the primary microseisms and the 50-200 s band for the Earth hum using PSDs of three-component broadband seismic data (BH channels). The stored microseism energy values will be smoothed using a median sliding time window (e.g. 6 hours, 12 hours, 1 day, 4 days, and 16 days, etc.).
  
@@ -67,7 +67,7 @@ PSDs of seismic station waveform data needed for computation of the microseism e
     - the PDF-PSD package above
     - PSDs computed by IRIS’s  MUSTANG noise-psd Web Service (http://service.iris.edu/mustang/noise-psd/1/)
 
-**Polarization Attributes (POLAR) package** (Wiki page, https://github.com/iris-edu/noise-toolkit/wiki/Noise-Toolkit-Polarization-Attributes-package-2)
+**Polarization Attributes (POLAR) package** (Wiki page, https://github.com/iris-edu/noise-toolkit/wiki/Noise-Toolkit-Polarization-Attributes-package-V.2)
 
 The Polarization package of the Noise Toolkit is based on the eigen-decomposition of the spectra covariance matrix of a sliding window of three-component seismic data, as described by Koper and Hawley (2010). The derived frequency dependent polarization attributes are:
 

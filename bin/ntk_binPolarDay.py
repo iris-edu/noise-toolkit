@@ -105,7 +105,8 @@ def usage():
           f'\n\nExamples:'
           f'\n\n\t-usage:'
           f'\n\tpython {script}'
-          f'\n\n\t- assuming that you already have executed the following command to generate polarization files:'
+          f'\n\n\t- assuming that you already have executed the following command "successfully" to generate '
+          f'polarization files:'
           f'\n\tpython ntk_computePolarization.py net=NM sta=SLM loc=DASH '
           f'start=2009-01-01T01:00:00 end=2009-01-01T03:00:00 xtype=frequency verbose=0'
           f'\n\n\tyou can bin the polarization parameters into daily files: '
@@ -157,13 +158,23 @@ column_tag = param.variables
 
 # We always want to start from the beginning of the day, so we discard user hours, if any
 start_date_time = utils_lib.get_param(args, 'start', None, usage)
-start_datetime, start_year, start_month, start_day, start_doy = utils_lib.time_info(start_date_time)
+try:
+    start_datetime, start_year, start_month, start_day, start_doy = utils_lib.time_info(start_date_time)
+except Exception as ex:
+    usage()
+    code = msg_lib.error(f'Invalid start ({start_date_time})\n{ex}', 2)
+    sys.exit(code)
 
 # We always want to start from the beginning of the day, so we discard user hours, if any.
 end_date_time = utils_lib.get_param(args, 'end', None, usage)
 
 # end_date_time is included.
-end_datetime, end_year, end_month, end_day, end_doy = utils_lib.time_info(end_date_time)
+try:
+    end_datetime, end_year, end_month, end_day, end_doy = utils_lib.time_info(end_date_time)
+except Exception as ex:
+    usage()
+    code = msg_lib.error(f'Invalid end ({end_date_time})\n{ex}', 2)
+    sys.exit(code)
 
 duration = end_datetime - start_datetime
 

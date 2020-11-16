@@ -332,10 +332,20 @@ if len(request_station) <= 2:
 
 # Specific start and end date and times from user.
 request_start_date_time = utils_lib.get_param(args, 'start', None, usage)
-request_start_datetime = UTCDateTime(request_start_date_time)
+try:
+    request_start_datetime = UTCDateTime(request_start_date_time)
+except Exception as ex:
+    usage()
+    code = msg_lib.error(f'Invalid start ({request_start_date_time})\n{ex}', 2)
+    sys.exit(code)
 
 request_end_date_time = utils_lib.get_param(args, 'end', None, usage)
-request_end_datetime = UTCDateTime(request_end_date_time)
+try:
+    request_end_datetime = UTCDateTime(request_end_date_time)
+except Exception as ex:
+    usage()
+    code = msg_lib.error(f'Invalid end ({request_end_datetime})\n{ex}', 2)
+    sys.exit(code)
 
 if timing:
     t0 = utils_lib.time_it('request info', t0)

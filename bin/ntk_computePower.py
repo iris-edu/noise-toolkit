@@ -42,7 +42,7 @@ import utilsLib as utils_lib
   PDF files
 
   HISTORY:
-     2020-11-16 Manoch: V.2.0.0 Python and adoption of PEP 8 style guide.
+     2020-11-16 Manoch: V.2.0.0 Python 3 and adoption of PEP 8 style guide.
      2015-04-22 Manoch: file name correction
      2014-11-24 Manoch: Beta release (V.0.5) to compute power based on a combined PSD file
                 with format similar to output of the ntk_extractPsdHour.py script (see NTK PSD/PDF bundle)
@@ -102,7 +102,7 @@ def usage():
           f'\n\nExamples:'
           f'\n\n\t-usage:'
           f'\n\tpython {script}'
-          f'\n\n\t- assuming that you already have executed the following command to generate PSD files:'
+          f'\n\n\t- assuming that you already have executed the following command "successfully" to generate PSD files:'
           f'\n\tpython ntk_extractPsdHour.py net=TA sta=O18A loc=DASH chan=BHZ start=2008-08-14T12:00:00 '
           f'end=2008-08-14T12:30:00 xtype=period'
           f'\n\n\tcompute power via:'
