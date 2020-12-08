@@ -5,18 +5,18 @@
   Noise Toolkit 
   Python installation guide
 
-  V.2.0.0
+  V.2.0,0
   2020-11-16
 
  -----------------------------------------------------------------------------------------------------------------------
 
-     - install Python 3.8 or higher on your computer
+     - install Python 3 on your computer (tested with Python 3.8, may work with older 3 versions)
 
      - additional required Python modules are:
-             . obspy 1.2.2
-             . matplotlib 3.3.3
-             . numpy 6.2
-             . scipy 1.5.3
+             . obspy (tested with version 1.2.2)
+             . matplotlib (tested with version 3.3.3)
+             . numpy (tested with version 6.2)
+             . scipy (tested with version 1.5.3)
 
 
      - download the package to the destination directory

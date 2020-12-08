@@ -3,8 +3,8 @@
  Data Products Team\
  Noise Toolkit (NTK)
 
- 2020-11-16\
- V.2.0.0 for Python 3
+ 2020-12-08\
+ v2.0.0 for Python 3
 
 ------------------------------------------------------------------------------------------------------------------------
 
@@ -12,12 +12,16 @@
  
 This repository is the new home for the IRIS DMC Noise Toolkit data product packages (previously hosted on seiscode.iris.washington.edu):
 
-    https://github.com/iris-edu/noise-toolkit/releases/tag/V.2.0:
+    https://github.com/iris-edu/noise-toolkit/releases/tag/v2.0.0:
     - The latest release under Python 3 that includes:
-       - use of IRIS Fedcatalog to access station data across FDSN data centers 
-         (http://service.iris.edu/irisws/fedcatalog/1/)
-       - use matplotlib.mlab csd to compute  spectral density
-       - adoption of PEP 8 style guide
+       - A significant change has been made in how data are requested. With the v1 release, only data from IRIS or 
+       user local disk were retrieved, but v2 supports data retrieval from all FDSN data providers via our 
+       FedCatalog service (http://service.iris.edu/irisws/fedcatalog/1/). See https://ds.iris.edu/gmap/ for a 
+       map of the FDSN stations from different data centers.
+       - PDF/PSD package now uses matplotlib.csd to compute PSDs
+       - three packages have been upgraded to Python 3
+       - All scripts have been updated to follow PEP 8 as much as possible, although some of the old-style code 
+       still remains for compatibility
     
     https://github.com/iris-edu/noise-toolkit/releases/tag/V.1.0:
     Original release under Python 2.7 that was hosted on seiscode:
