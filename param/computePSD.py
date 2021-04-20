@@ -98,8 +98,9 @@ xlimMin = {'LHZ': [5.0, 0.01], 'LHN': [5.0, 0.01], 'LHE': [5.0, 0.01], 'LH1': [5
            'HHZ': [1.0, 0.01], 'HHN': [1.0, 0.01], 'HHE': [1.0, 0.01], 'HH1': [1.0, 0.01], 'HH2': [1.0, 0.01],
            'BDF': [0.05, 0.01]}
 xlimMax = {'LHZ': [100.0, 1.0], 'LHN': [100.0, 1.0], 'LHE': [100.0, 1.0], 'LH1': [100.0, 1.0],
-           'BHZ': [100.0, 20.0], 'BHN': [100.0, 20.0], 'BHE': [100.0, 20.0], 'BH1': [100.0, 20.0],
-           'BH2': [100.0, 20.0], 'BDF': [100.0, 20.0]}
+           'BHZ': [100.0, 20.0], 'BHN': [100.0, 20.0], 'BHE': [100.0, 20.0], 'BH1': [100.0, 20.0], 'BH2': [100.0, 20.0],
+           'HHZ': [100.0, 20.0], 'HHN': [100.0, 20.0], 'HHE': [100.0, 20.0], 'HH1': [100.0, 20.0], 'HH2': [100.0, 20.0],
+           'BDF': [100.0, 20.0]}
 
 """ The requestClient to call to get the waveforms from (FDSN, IRIS or FILES). 
 For the restricted data access, you need user and password information. For information on how to access 
