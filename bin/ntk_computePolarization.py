@@ -56,11 +56,13 @@ import sfLib as sf_lib
 
   HISTORY:
 
-     2020-11-16 Manoch: V.2.0.0 Python 3, use of Fedcatalog and adoption of PEP 8 style guide.
+    2021-06-23 Manoch: v.2.0.1 Fixed the issue with processing beyond requested time window when multiple local
+                       files exist.
+     2020-11-16 Manoch: v.2.0.0 Python 3, use of Fedcatalog and adoption of PEP 8 style guide.
      2020-09-25 Timothy C. Bartholomaus, University of Idaho: conversion to python 3
-     2017-01-18 Manoch: V.0.6.5 support for reading data and metadata from files only with no Internet requirement
-     2016-11-01 Manoch: V.0.6.0 support for obtaining channel responses from local station XML response files
-     2016-01-25 Manoch: V.0.5.1 added support for accessing restricted data via user and password
+     2017-01-18 Manoch: v.0.6.5 support for reading data and metadata from files only with no Internet requirement
+     2016-11-01 Manoch: v.0.6.0 support for obtaining channel responses from local station XML response files
+     2016-01-25 Manoch: v.0.5.1 added support for accessing restricted data via user and password
      2015-09-02 Manoch: RV..5 ready for release
      2015-06-16 Manoch: updated based on the latest ntk_computePSD.py
      2015-04-07 Manoch: added check for all parameter values to inform user if they are not defined. Corrected the 
@@ -87,7 +89,7 @@ import sfLib as sf_lib
 
 """
 
-version = 'V.2.0.0'
+version = 'v.2.0.1'
 script = sys.argv[0]
 script = os.path.basename(script)
 
@@ -429,11 +431,13 @@ for _key in cat:
     st = None
 
     if verbose:
-        msg_lib.info('{script}, Sending requests for:')
-        msg_lib.info(f'==========')
-        for line in cat[_key]['bulk']:
-            msg_lib.info(f'{script}, {line}')
-        msg_lib.info(f'==========')
+        msg_lib.info('Sending requests for:')
+        if type(cat[_key]['bulk']) == str:
+            msg_lib.info(cat[_key]['bulk'])
+        else:
+            for line in cat[_key]['bulk']:
+                msg_lib.info(line)
+
     if not cat[_key]['bulk']:
         msg_lib.warning(f'{script}, Skipping data request from {_key}, no stations to request!\n')
         continue
@@ -534,15 +538,22 @@ for _key in cat:
             msg_lib.message(f'Slice stream between {t_start} and {t_end}')
 
         # Did we manage to get the data?
-        if st is None or len(st) <= 0:
+        if st is None or not st:
             msg_lib.warning('Channel Waveform', f'No data available for '
                                                 f'{request_network}.{request_station}.{request_location}.'
                                                 f'{request_channel}')
             continue
         else:
-            qc_records = ts_lib.qc_3c_stream(st, param.windowLength,
-                                             utils_lib.param(param, 'nSegWindow').nSegWindow,
-                                             sorted_channel_list, param.channelGroups, verbose)
+            st_starttime = min([tr.stats.starttime for tr in st])
+            st_endtime = max([tr.stats.endtime for tr in st])
+            if request_start_datetime >= st_endtime or request_end_datetime <= st_starttime:
+                msg_lib.warning(script, f'Stream time from {st_starttime} to {st_endtime} is outside the '
+                                        f'request window {request_start_datetime} to {request_end_datetime}')
+                continue
+            else:
+                qc_records = ts_lib.qc_3c_stream(st, param.windowLength,
+                                                 utils_lib.param(param, 'nSegWindow').nSegWindow,
+                                                 sorted_channel_list, param.channelGroups, verbose)
             if verbose:
                 msg_lib.info(f'{script}, stream length: {len(st)}s')
                 msg_lib.info(f'{script}, QC-passed records: {qc_records}')

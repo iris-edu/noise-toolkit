@@ -55,12 +55,14 @@ import shared as shared
 
  History:
 
-    2020-11-16 Manoch: V.2.0.0 Python 3, use of Fedcatalog, adoption of CSD changes and adoption of PEP 8 style guide.
+    2021-06-23 Manoch: v.2.0.1 Fixed the issue with processing beyond requested time window when multiple local
+                       files exist.
+    2020-11-16 Manoch: v.2.0.0 Python 3, use of Fedcatalog, adoption of CSD changes and adoption of PEP 8 style guide.
     2019-09-09 Robert Anthony (USGS, Albuquerque Seismological Laboratory): 
                        Using CSD to compute the cross spectral density of two signals
-    2017-01-18 Manoch: V.0.9.5 support for reading data and metadata from files only with no Internet requirement
-    2016-11-01 Manoch: V.0.9.0 support for obtaining channel responses from local station XML response files
-    2016-01-25 Manoch: V.0.8.1 support for restricted data, if user and password parameters are provided (see 
+    2017-01-18 Manoch: v.0.9.5 support for reading data and metadata from files only with no Internet requirement
+    2016-11-01 Manoch: v.0.9.0 support for obtaining channel responses from local station XML response files
+    2016-01-25 Manoch: v.0.8.1 support for restricted data, if user and password parameters are provided (see 
                        RestrictedData Access under http://service.iris.edu/fdsnws/dataselect/1/)
     2015-04-07 Manoch: added check for all parameter values to inform user if they are not defined. Corrected the 
                        instrument correction for SAC files that would apply
@@ -86,7 +88,7 @@ import shared as shared
 
 """
 
-version = 'V.2.0.0'
+version = 'v.2.0.1'
 script = sys.argv[0]
 script = os.path.basename(script)
 
@@ -426,11 +428,13 @@ production_label = f'{production_label}\ndoi:{shared.ntk_doi}'
 stream = None
 for _key in cat:
     st = None
-
     if verbose:
         msg_lib.info('Sending requests for:')
-        for line in cat[_key]['bulk']:
-            msg_lib.info(line)
+        if type(cat[_key]['bulk']) == str:
+            msg_lib.info(cat[_key]['bulk'])
+        else:
+            for line in cat[_key]['bulk']:
+                msg_lib.info(line)
 
     if not cat[_key]['bulk']:
         msg_lib.warning(f'Skipping data request from {_key}, no stations to request!\n')
@@ -519,14 +523,25 @@ for _key in cat:
         else:
             stream = st.slice(starttime=t_start, endtime=t_end, keep_empty_traces=False, nearest_sample=True)
 
-        if stream is None:
+        if stream is None or not stream:
             code = msg_lib.error(f'No data in stream', 4)
             sys.exit(code)
         else:
-            msg_lib.info(f'{script} {str(stream)}')
+            st_starttime = min([tr.stats.starttime for tr in stream])
+            st_endtime = max([tr.stats.endtime for tr in stream])
+            if request_start_datetime >= st_endtime or request_end_datetime <= st_starttime:
+                msg_lib.warning(script, f'Stream time from {st_starttime} to {st_endtime} is outside the '
+                                        f'request window {request_start_datetime} to {request_end_datetime}')
+                continue
+            else:
+                msg_lib.info(f'{script} {str(stream)}')
 
         for tr in stream:
 
+            if request_start_datetime >= tr.stats.endtime or request_end_datetime <= tr.stats.starttime:
+                msg_lib.warning(script, f'Trace time from {tr.stats.starttime} to {tr.stats.endtime} is outside the '
+                                        f'request window {request_start_datetime} to {request_end_datetime}')
+                continue
             network = tr.stats.network
             station = tr.stats.station
             location = sta_lib.get_location(tr.stats.location)
