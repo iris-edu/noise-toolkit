@@ -1,12 +1,12 @@
- ----------------------------------------------------------------------------------------------------------------------------------------
+ -----------------------------------------------------------------------------------------------------------------------
   Incorporated Research Institutions for Seismology (IRIS)
   Data Management Center (DMC)
   Data Products Team
   Noise Toolkit PDF/PSD scripts package
  
-  V.2.0.0 2020-11-16 
+  V.2.1.0 2021-08-30
  
- ----------------------------------------------------------------------------------------------------------------------------------------
+ -----------------------------------------------------------------------------------------------------------------------
  
   Copyright (C) 2020  Product Team, IRIS Data Management Center
  
@@ -54,24 +54,32 @@
             https://github.com/iris-edu/noise-toolkit/wiki/Noise-Toolkit-Polarization-Attributes-package-V.2
  
   HISTORY
-     - 2020-11-16 V.2.0.0: Python 3, use of Fedcatalog and adoption of PEP 8 style guide
-     - 2017-01-18 V.0.6.5: support for reading data and metadata from files only with no Internet requirement
-     - 2016-11-01 V.0.6.0: added support for obtaining channel responses from local station XML response files by introducing the following two functions in tsLIB.py:
-                        getResponseInventory - to build a list of response inventories under a given met directory
-                        getResponseFromFile - to find response for a given Network, Station, Location and channel
-                        added respDirectory to common.py parameter file to disable looking for response files on local drives, set this parameter to None. Otherwise, set it to the response directory path
-     - 2016-01-25 V.0.5.1: added user and password parameters to common.par and ntk_computePSD.py in support of restricted data access
-     - 2015-09-02 V.0.5.0: ready for release
+     - 2021-08-31 v.2.1.0 : This patch addresses the output file naming issue when data were read from files.
+                            The bug was causing output to be written under the same file name. This patch also makes
+                            some PEP 8 style fixes and adds the script version to the log file.
+     - 2020-11-16 v.2.0.0: Python 3, use of Fedcatalog and adoption of PEP 8 style guide
+     - 2017-01-18 v.0.6.5: support for reading data and metadata from files only with no Internet requirement
+     - 2016-11-01 v.0.6.0: added support for obtaining channel responses from local station XML response files by
+                           introducing the following two functions in tsLIB.py:
+                            getResponseInventory - to build a list of response inventories under a given met directory
+                            getResponseFromFile - to find response for a given Network, Station, Location and channel
+                            added respDirectory to common.py parameter file to disable looking for response files on
+                            local drives, set this parameter to None. Otherwise, set it to the response directory path
+     - 2016-01-25 v.0.5.1: added user and password parameters to common.par and ntk_computePSD.py in support of
+                           restricted data access
+     - 2015-09-02 v.0.5.0: ready for release
      - 2015-06-16: updated based on the latest ntk_computePSD.py
-     - 2015-04-07: added check for all parameter values to inform user if they are not defined. Corrected the instrument correction for SAC files that would apply
-                        sensitivity in addition to instrument correction
+     - 2015-04-07: added check for all parameter values to inform user if they are not defined. Corrected the instrument
+                   correction for SAC files that would apply sensitivity in addition to instrument correction
      - 2015-04-06: addressed the variable maximum period issue that was changing based on the smoothing window length
-     - 2015-04-02: based on feedback from Robert Anthony, in addition to nan values other non-numeric values may exist. The write that contains a flot() conversion
-                        is placed in a try block so we can catch any non-numeric conversion issue and report it as user-defined NAN
+     - 2015-04-02: based on feedback from Robert Anthony, in addition to nan values other non-numeric values may exist.
+                   The write that contains a flot() conversion is placed in a try block so we can catch any non-numeric
+                   conversion issue and report it as user-defined NAN
      - 2015-03-30: added a check to number of samples to avoid log of zero (reported by Rob Anthony)
-     - 2015-03-17: added the "waterLevel" parameter to provide user with more control on how the ObsPy module shrinks values under water-level of max spec amplitude
-                        when removing the instrument response.
-     - 2015-02-24: introduced two new parameters (performInstrumentCorrection, applyScale) to allow user avoid instrument correction also now user can turn od decon. filter
+     - 2015-03-17: added the "waterLevel" parameter to provide user with more control on how the ObsPy module shrinks
+                   values under water-level of max spec amplitude when removing the instrument response.
+     - 2015-02-24: introduced two new parameters (performInstrumentCorrection, applyScale) to allow user avoid
+                   instrument correction also now user can turn od decon. filter
      - 2014-10-22: added support for Windows installation
      - 2014-05-20: added some informative message about data retrieval
                         changed format to output each channel to a separate directory and save files

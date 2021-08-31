@@ -1,12 +1,12 @@
- ----------------------------------------------------------------------------------------------------------------------------------------
+ -----------------------------------------------------------------------------------------------------------------------
   Incorporated Research Institutions for Seismology (IRIS)
   Data Management Center (DMC)
   Data Products Team
   Noise Toolkit PDF/PSD scripts package
  
-  V.2.0.0 2020-11-16 
+  V.2.0.1 2021-08-31
  
- ----------------------------------------------------------------------------------------------------------------------------------------
+ -----------------------------------------------------------------------------------------------------------------------
  
   Copyright (C) 2020  Product Team, IRIS Data Management Center 
  
@@ -56,33 +56,48 @@
  
   HISTORY
 
-      - 2020-11-16 V.2.0.0: Python 3, use of Fedcatalog, adoption of CSD changes and adoption of PEP 8 style guide.
+      - 2021-08-31 v.2.1.0: This patch addresses the output file naming issue when data were read from files.
+                            The bug was causing output to be written under the same file name. This patch also adds the
+                            script version to the log file.
+      - 2021-06-23 v.2.0.1: Fixed the issue with processing beyond requested time window when multiple local
+                            files exist.
+      - 2020-11-16 v.2.0.0: Python 3, use of Fedcatalog, adoption of CSD changes and adoption of PEP 8 style guide.
       - 2019-09-09 Robert Anthony (USGS, Albuquerque Seismological Laboratory):
-                       Using CSD to compute the cross spectral density of two signals
-      - 2017-01-18 V.0.9.5: support for reading data and metadata from files only with no Internet requirement
-      - 2016-11-01 V.0.9.0: added support for obtaining channel responses from local station XML response files by introducing the following two functions in tsLIB.py:
-                   getResponseInventory - to build a list of response inventories under a given met directory
-                   getResponseFromFile - to find response for a given Network, Station, Location and channel
-                   added respDirectory to common.py parameter file to disable looking for response files on local drives, set this parameter to None. Otherwise, set it to the response directory path
-     - 2016-01-25 V.0.8.2: added polarization parameters to common.par and also made changes to some libraries in support of the polarization bundle
-                   added user and password parameters to common.par and ntk_computePSD.py in support of restricted data access
-     - 2015-04-30 V.0.8.1: added powerDirectory and imageDirectory parameters to common.par in support of ME bundle.
-     - 2015-04-07 V.0.8.0: now produces clear messages for missing parameters in the parameter file. Addresses reported maximum period values. Minor bugs and enhancements
-     - 2015-02-24 V.0.7.0: introduced two new parameters (performInstrumentCorrection, applyScale) to allow user avoid instrument correction also now user can turn od decon. filter
-     - 2014-11-24 V.0.6.2: documentation update and expansion of the common.py file to support Microseism Energy bundle
-     - 2014-10-16 V.0.6.0: ntk_extractPsdHour.py output file name now includes the x-axis type
-     - 2014-10-01 V.0.5.0: initial Beta release. Made the smoothing configurable, reorganized parameters for easier maintenance
-     - 2014-05-20 modified the output format to:
-         1. compute hourly PSDs and store them under the psdDb directory (this will be similar to PQLX’s database) as basis for script outputs
-         2. provide the extractPsdHourly.py script to extract PSD's for a given channel and bounding parameters. The output is similar to PQLX's exPSDhour script
-         3. provide the extractPdf.py that will extract PSDs to create (hourly and daily)  PDFs for a given channel and bounding parameters. 
-            The output is similar to the current PDF output from the PDF-PSD data product (http://ds.iris.edu/ds/products/pdf-psd/)
- 
-            Users should be able to use the above outputs with their existing scripts that work with the PQLX and Quack outputs (hourly bin files have hour-minute
-            as the first column to avoid cross-reference to hour.bin file of Quack
- 
-     - 2014-03-19: Added data file input option
-     - 2014-03-07: Initial Alpha release 
+                            Using CSD to compute the cross spectral density of two signals
+      - 2017-01-18 v.0.9.5: support for reading data and metadata from files only with no Internet requirement
+      - 2016-11-01 v.0.9.0: added support for obtaining channel responses from local station XML response files by
+                            introducing the following two functions in tsLIB.py:
+                            getResponseInventory - to build a list of response inventories under a given met directory
+                            getResponseFromFile - to find response for a given Network, Station, Location and channel
+                            added respDirectory to common.py parameter file to disable looking for response files on
+                            local drives, set this parameter to None. Otherwise, set it to the response directory path
+      - 2016-01-25 v.0.8.2: added polarization parameters to common.par and also made changes to some libraries in
+                            support of the polarization bundle added user and password parameters to common.par and
+                            ntk_computePSD.py in support of restricted data access
+      - 2015-04-30 v.0.8.1: added powerDirectory and imageDirectory parameters to common.par in support of ME bundle.
+      - 2015-04-07 v.0.8.0: now produces clear messages for missing parameters in the parameter file. Addresses reported
+                            maximum period values. Minor bugs and enhancements
+      - 2015-02-24 v.0.7.0: introduced two new parameters (performInstrumentCorrection, applyScale) to allow user avoid
+                            instrument correction also now user can turn od decon. filter
+      - 2014-11-24 v.0.6.2: documentation update and expansion of the common.py file to support Microseism Energy bundle
+      - 2014-10-16 v.0.6.0: ntk_extractPsdHour.py output file name now includes the x-axis type
+      - 2014-10-01 v.0.5.0: initial Beta release. Made the smoothing configurable, reorganized parameters for easier
+                            maintenance
+      - 2014-05-20 modified the output format to:
+         1. compute hourly PSDs and store them under the psdDb directory (this will be similar to PQLX’s database) as
+            basis for script outputs
+         2. provide the extractPsdHourly.py script to extract PSD's for a given channel and bounding parameters.
+            The output is similar to PQLX's exPSDhour script
+         3. provide the extractPdf.py that will extract PSDs to create (hourly and daily)  PDFs for a given channel
+            and bounding parameters. The output is similar to the current PDF output from the PDF-PSD data product
+            (http://ds.iris.edu/ds/products/pdf-psd/)
+
+            Users should be able to use the above outputs with their existing scripts that work with the PQLX and
+            Quack outputs (hourly bin files have hour-minute as the first column to avoid cross-reference to hour.bin
+            file of Quack
+
+      - 2014-03-19: Added data file input option
+      - 2014-03-07: Initial Alpha release
   
   COMMENTS/QUESTIONS:
  
