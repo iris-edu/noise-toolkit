@@ -181,7 +181,6 @@ def get_channel_waveform_files(network, station, location, channel, start_time, 
                     continue
 
     except Exception as ex:
-        print(str(e))
         msg_lib.error(f'get_channel_waveform_files {network}, {station}, {location}, {channel}, {start_time}, '
                       f'{end_time}, {ex}',
                       2)
