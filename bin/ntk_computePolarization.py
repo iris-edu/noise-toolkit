@@ -37,7 +37,7 @@ import sfLib as sf_lib
   Name: ntk_computePolarization.py - a ObsPy 3 script to calculate polarization parameters
         for a given station 
 
-  Copyright (C) 2020  Product Team, IRIS Data Management Center
+  Copyright (C) 2021  Product Team, IRIS Data Management Center
 
      This is a free software; you can redistribute it and/or modify
      it under the terms of the GNU Lesser General Public License as
@@ -56,6 +56,9 @@ import sfLib as sf_lib
 
   HISTORY:
 
+    2021-08-31 Manoch: v.2.1.0 This patch addresses the output file naming issue when data were read from files.
+                       The bug was causing output to be written under the same file name. This patch also makes some 
+                       PEP 8 style fixes and adds the script version to the log file.
     2021-06-23 Manoch: v.2.0.1 Fixed the issue with processing beyond requested time window when multiple local
                        files exist.
      2020-11-16 Manoch: v.2.0.0 Python 3, use of Fedcatalog and adoption of PEP 8 style guide.
@@ -63,7 +66,7 @@ import sfLib as sf_lib
      2017-01-18 Manoch: v.0.6.5 support for reading data and metadata from files only with no Internet requirement
      2016-11-01 Manoch: v.0.6.0 support for obtaining channel responses from local station XML response files
      2016-01-25 Manoch: v.0.5.1 added support for accessing restricted data via user and password
-     2015-09-02 Manoch: RV..5 ready for release
+     2015-09-02 Manoch: v.0.5.0 ready for release
      2015-06-16 Manoch: updated based on the latest ntk_computePSD.py
      2015-04-07 Manoch: added check for all parameter values to inform user if they are not defined. Corrected the 
                         instrument correction for SAC files that would apply
@@ -89,7 +92,7 @@ import sfLib as sf_lib
 
 """
 
-version = 'v.2.0.1'
+version = 'v.2.1.0'
 script = sys.argv[0]
 script = os.path.basename(script)
 
@@ -291,7 +294,7 @@ action = str()
 # Runtime arguments.
 t0 = time()
 t1 = utils_lib.time_it(f'START', t0)
-msg_lib.message(f'{script}, START')
+msg_lib.message(f'{script} {version}, START')
 
 request_network = utils_lib.get_param(args, 'net', None, usage)
 request_station = utils_lib.get_param(args, 'sta', None, usage)
@@ -528,14 +531,14 @@ for _key in cat:
             useClient = client
             if not internet:
                 useClient = None
-            inventory, st = ts_lib.get_channel_waveform_files(request_network, request_station,
-                                                              request_location, request_channel,
-                                                              segment_start, segment_end, useClient,
-                                                              utils_lib.param(param, 'fileTag').fileTag,
-                                                              resp_dir=response_directory)
-        else:
-            st = stream.slice(starttime=t_start, endtime=t_end, keep_empty_traces=False, nearest_sample=True)
-            msg_lib.message(f'Slice stream between {t_start} and {t_end}')
+            inventory, stream = ts_lib.get_channel_waveform_files(request_network, request_station,
+                                                                  request_location, request_channel,
+                                                                  segment_start, segment_end, useClient,
+                                                                  utils_lib.param(param, 'fileTag').fileTag,
+                                                                  resp_dir=response_directory)
+
+        st = stream.slice(starttime=t_start, endtime=t_end, keep_empty_traces=False, nearest_sample=True)
+        msg_lib.message(f'Slice stream between {t_start} and {t_end}')
 
         # Did we manage to get the data?
         if st is None or not st:
@@ -909,8 +912,8 @@ for _key in cat:
             """
             variable["powerLambda"] = np.append(variable["powerLambda"], norm * max_eig_value)
             variable["betaSquare"] = np.append(variable["betaSquare"],
-                                               polar_lib.polarization_degree(m11[ii], m12[ii], m13[ii], m22[ii], m23[ii],
-                                                                             m33[ii]))
+                                               polar_lib.polarization_degree(m11[ii], m12[ii], m13[ii], m22[ii],
+                                                                             m23[ii], m33[ii]))
             variable["thetaH"] = np.append(variable["thetaH"], thetah)
             variable["phiHH"] = np.append(variable["phiHH"], phihh)
             variable["thetaV"] = np.append(variable["thetaV"], thetav)
@@ -1149,23 +1152,28 @@ for _key in cat:
                     smooth_x, smooth["powerUD"] = \
                         sf_lib.smooth_frequency(frequency, variable["powerUD"], sampling_frequency,
                                                 octave_window_width, octave_window_shift,
-                                                min_frequency, float(utils_lib.param(param, 'xStart').xStart[plot_index]))
+                                                min_frequency,
+                                                float(utils_lib.param(param, 'xStart').xStart[plot_index]))
                     smooth_x, smooth["powerEW"] = \
                         sf_lib.smooth_frequency(frequency, variable["powerEW"], sampling_frequency,
                                                 octave_window_width, octave_window_shift,
-                                                min_frequency, float(utils_lib.param(param, 'xStart').xStart[plot_index]))
+                                                min_frequency,
+                                                float(utils_lib.param(param, 'xStart').xStart[plot_index]))
                     smooth_x, smooth["powerNS"] = \
                         sf_lib.smooth_frequency(frequency, variable["powerNS"], sampling_frequency,
                                                 octave_window_width, octave_window_shift,
-                                                min_frequency, float(utils_lib.param(param, 'xStart').xStart[plot_index]))
+                                                min_frequency,
+                                                float(utils_lib.param(param, 'xStart').xStart[plot_index]))
                     smooth_x, smooth["powerLambda"] = \
                         sf_lib.smooth_frequency(frequency, variable["powerLambda"], sampling_frequency,
                                                 octave_window_width, octave_window_shift,
-                                                min_frequency, float(utils_lib.param(param, 'xStart').xStart[plot_index]))
+                                                min_frequency,
+                                                float(utils_lib.param(param, 'xStart').xStart[plot_index]))
                     smooth_x, smooth["betaSquare"] = \
                         sf_lib.smooth_frequency(frequency, variable["betaSquare"], sampling_frequency,
                                                 octave_window_width, octave_window_shift,
-                                                min_frequency, float(utils_lib.param(param, 'xStart').xStart[plot_index]))
+                                                min_frequency,
+                                                float(utils_lib.param(param, 'xStart').xStart[plot_index]))
 
                     # Smoothing of angular quantities.
                     smooth_x, smooth["thetaH"] = \
@@ -1236,8 +1244,8 @@ for _key in cat:
         # Create output paths if they do not exist.
         if utils_lib.param(param, 'outputValues').outputValues > 0:
             file_path, psd_file_tag = file_lib.get_dir(utils_lib.param(param, 'dataDirectory').dataDirectory,
-                                                       utils_lib.param(param, 'polarDbDirectory').polarDbDirectory, network,
-                                                       station, location, channelTag)
+                                                       utils_lib.param(param, 'polarDbDirectory').polarDbDirectory,
+                                                       network, station, location, channelTag)
             file_path = os.path.join(file_path, segment_start_year, segment_start_doy)
             utils_lib.mkdir(file_path)
 
@@ -1245,12 +1253,16 @@ for _key in cat:
             if verbose:
                 msg_lib.info(f'tr_channel_.stats: {channel_tr[0].stats} '
                              f'REQUEST: {segment_start} '
-                             f'TRACE: {channel_tr[0].stats.starttime.replace("Z", "")} '
+                             f'TRACE: {channel_tr[0].stats.starttime} '
                              f'DELTA: {channel_tr[0].stats.delta}')
-                samples = int(utils_lib.param(param, "windowLength").windowLength / float(channel_tr[0].stats.delta) + 1)
+                samples = int(utils_lib.param(param, "windowLength").windowLength /
+                              float(channel_tr[0].stats.delta) + 1)
                 msg_lib.info(f'SAMPLES: '
                              f'{samples}')
-            tag_list = [psd_file_tag, channel_tr[0].stats.starttime.strftime("%Y-%m-%dT%H:%M:%S"),
+            channel_time = channel_tr[0].stats.starttime
+            # Avoid file names with 59.59.
+            channel_time += datetime.timedelta(microseconds=10)
+            tag_list = [psd_file_tag, channel_time.strftime("%Y-%m-%dT%H:%M:%S"),
                         f'{param.windowLength}', xtype]
             file_name = file_lib.get_file_name(utils_lib.param(param, 'namingConvention').namingConvention, file_path,
                                                tag_list)
@@ -1266,9 +1278,9 @@ for _key in cat:
                     for i in range(0, len(smooth_x)):
                         file.write("%11.6f %11.4f %11.4f %11.4f %11.4f %11.4f %11.4f %11.4f %11.4f %11.4f\n" % (
                             float(smooth_x[i]), float(smooth["powerUD"][i]), float(smooth["powerEW"][i]),
-                            float(smooth["powerNS"][i]), float(smooth["powerLambda"][i]), float(smooth["betaSquare"][i]),
-                            float(smooth["thetaH"][i]), float(smooth["thetaV"][i]), float(smooth["phiVH"][i]),
-                            float(smooth["phiHH"][i])))
+                            float(smooth["powerNS"][i]), float(smooth["powerLambda"][i]),
+                            float(smooth["betaSquare"][i]), float(smooth["thetaH"][i]), float(smooth["thetaV"][i]),
+                            float(smooth["phiVH"][i]), float(smooth["phiHH"][i])))
 
             except Exception as ex:
                 code = msg_lib.error(

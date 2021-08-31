@@ -36,7 +36,7 @@ import shared as shared
 """
  Name: ntk_computePSD.py - a Python 3 script to calculate the average power spectral density for a given station.
 
- Copyright (C) 2020  Product Team, IRIS Data Management Center
+ Copyright (C) 2021  Product Team, IRIS Data Management Center
 
     This is a free software; you can redistribute it and/or modify
     it under the terms of the GNU Lesser General Public License as
@@ -55,6 +55,9 @@ import shared as shared
 
  History:
 
+    2021-08-31 Manoch: v.2.1.0 This patch addresses the output file naming issue when data were read from files.
+                       The bug was causing output to be written under the same file name. This patch also adds the 
+                       script version to the log file.
     2021-06-23 Manoch: v.2.0.1 Fixed the issue with processing beyond requested time window when multiple local
                        files exist.
     2020-11-16 Manoch: v.2.0.0 Python 3, use of Fedcatalog, adoption of CSD changes and adoption of PEP 8 style guide.
@@ -88,7 +91,7 @@ import shared as shared
 
 """
 
-version = 'v.2.0.1'
+version = 'v.2.1.0'
 script = sys.argv[0]
 script = os.path.basename(script)
 
@@ -237,8 +240,7 @@ verbose = utils_lib.is_true(verbose)
 timing = utils_lib.get_param(args, 'timing', utils_lib.param(param, 'timing').timing, usage)
 timing = utils_lib.is_true(timing)
 
-if verbose:
-    msg_lib.info(f'script: {script} {len(sys.argv) - 1} args: {sys.argv}')
+msg_lib.info(f'script: {script} {version} {len(sys.argv) - 1} args: {sys.argv}')
 
 octaveWindowWidth = float(1.0 / 2.0)
 octaveWindowShift = float(1.0 / 8.0)  # Smoothing window shift : float(1.0/8.0)= 1/8 octave shift;
@@ -515,13 +517,12 @@ for _key in cat:
             useClient = client
             if not internet:
                 useClient = None
-            inventory, stream = ts_lib.get_channel_waveform_files(request_network, request_station,
-                                                                  request_location, request_channel,
-                                                                  segment_start, segment_end, useClient,
-                                                                  utils_lib.param(param, 'fileTag').fileTag,
-                                                                  resp_dir=response_directory)
-        else:
-            stream = st.slice(starttime=t_start, endtime=t_end, keep_empty_traces=False, nearest_sample=True)
+            inventory, st = ts_lib.get_channel_waveform_files(request_network, request_station,
+                                                              request_location, request_channel,
+                                                              segment_start, segment_end, useClient,
+                                                              utils_lib.param(param, 'fileTag').fileTag,
+                                                              resp_dir=response_directory)
+        stream = st.slice(starttime=t_start, endtime=t_end, keep_empty_traces=False, nearest_sample=True)
 
         if stream is None or not stream:
             code = msg_lib.error(f'No data in stream', 4)
@@ -697,7 +698,10 @@ for _key in cat:
                                  f'SAMPLES: '
                                  f'{int(window_length / float(tr.stats.delta) + 1)} ')
 
-                time_label = tr.stats.starttime.strftime('%Y-%m-%dT%H:%M:%S')
+                trace_time = tr.stats.starttime
+                # Avoid file names with 59.59.
+                trace_time += datetime.timedelta(microseconds=10)
+                time_label = trace_time.strftime('%Y-%m-%dT%H:%M:%S')
                 tagList = [psd_file_tag, time_label,
                            f'{window_length}', xtype]
                 output_file_name = file_lib.get_file_name(utils_lib.param(
