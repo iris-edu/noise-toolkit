@@ -346,31 +346,26 @@ def get_fedcatalog_station(req_url, request_start, request_end, chunk_length, ch
 
 def qc_3c_stream(stream, segment_length, window, sorted_channel_list, channel_groups, verbose):
     """
-      qc_3c_stream performs a QC on a 3-C stream by making sure
-      all channels are present, traces are the same
-      length and have same start and end times  mostly needed for polarization analysis
-     
+      qc_3c_stream performs a QC on a 3-C stream by making sure all channels are present,
+      traces are the same length and have same start and end times  mostly needed for
+      polarization analysis
+
       the output is an array of trace record numbers in the stream that passed
       the QC
-      
+
       HISTORY:
-         2014-04-21 Manoch: created
+        2021-09-07 Manoch: qc_3c_stream  now uses trace stats information directly. Still follows the
+                           old code's QC logic but now records are created based on the
+                           trace stats.
+        2014-04-21 Manoch: created
     """
     sender = 'qc_3c_stream'
-    traces = str(stream)
-    traces = traces.split("\n")
-    if verbose:
-        msg_lib.info(f'{sender}, there are total of {len(traces)} traces.')
 
-    stream_list = list()
-    
-    # The first line is title.
-    for trace_index, trace in enumerate(traces):
-        if trace_index == 0:
-            continue
-        stream_list.append(f'{trace}|{trace_index}')
-    # Sort to make sure related records are one after another.
-    streams = sorted(stream_list)
+    if verbose:
+        msg_lib.info(f'{sender}, there are total of {len(stream)} traces.')
+    # Sort to make sure related records are one after another. Defaults to
+    # [‘network’, ‘station’, ‘location’, ‘channel’, ‘starttime’, ‘endtime’].
+    stream.sort()
 
     # extract the list, one record (line) at a time and group them
     qc_record_list = list()
@@ -382,52 +377,28 @@ def qc_3c_stream(stream, segment_length, window, sorted_channel_list, channel_gr
     station_info_list = list()
     time_info_list = list()
     channel_info_list = list()
-    record_info_list = list()
 
-    for line_index, line in enumerate(stream_list):
+    for line_index, trace in enumerate(stream):
         # Reset the list for each record (line).
         this_station_info_list = list()
         this_time_info_list = list()
         this_channel_info_list = list()
-        this_record_info_list = list()
 
-        """
-          RECORD: NM.SIUC..BHE | 2009-11-01T11:00:00.019537Z - 2009-11-01T11:59:59.994537Z | 40.0 Hz, 144000 samples|1
-                      |                                      |                                         |             |
-                     sta_info                               time_info                                 chan_info         rec_info
-         
-          from each record extract parts
-        """
-        sta_info, time_info, chan_info, rec_info = line.split("|")
+        # sta_info: [NET,STA,LOC,CHAN].
+        this_station_info_list = [trace.stats.network, trace.stats.station,
+                                  trace.stats.location, trace.stats.channel]
 
-        """
-          from each part extract list
-         
-                              0   1   2    3
-          this_station_info_list = [NET,STA,LOC,CHAN]
-        """
-        this_station_info_list = sta_info.strip().split(".")
-        
         # Replace blank locations with "--".
         this_station_info_list[2] = sta_lib.get_location(this_station_info_list[2])
 
-        """
-                                0   1  
-          this_time_info_list = [START,END]
-        """
-        this_time_info_list.append(time_info.strip().split(" - "))
+        # time_info = [ STart, End].
+        this_time_info_list.append([trace.stats.starttime, trace.stats.endtime])
 
-        """
-                                0        1     2      3
-          this_channel_info_list = [SAMPLING,UNIT,SAMPLES,TEXT]
-        """
-        this_channel_info_list.append(chan_info.strip().split(" "))
-
-        # This_record_info_list = RECORD.
-        this_record_info_list.append(int(rec_info.strip()))
+        # Channel_info [SAMPLING,UNIT,SAMPLES,TEXT].
+        this_channel_info_list.append([trace.stats.sampling_rate, 'Hz', trace.stats.npts, 'samples'])
 
         # Name each record as a channel group (do not include channel).
-        this_group_name = ".".join(this_station_info_list[ii] for ii in range(len(this_station_info_list) - 1))
+        this_group_name = ".".join(this_station_info_list[0:2])
 
         # Starting the first group, start saving info.
         if this_group_name != previous_group_name:
@@ -445,13 +416,10 @@ def qc_3c_stream(stream, segment_length, window, sorted_channel_list, channel_gr
         group_channels[group_count].append(this_station_info_list[-1])
         group_records[group_count].append(line_index)
 
-        #
-        # note: the following arrays are not grouped, hence extend and not append
-        #
+        # Note: the following arrays are not grouped, hence extend and not append
         time_info_list.extend(this_time_info_list)
         channel_info_list.extend(this_channel_info_list)
         station_info_list.extend([this_station_info_list])
-        record_info_list.extend(this_record_info_list)
 
     if verbose:
         msg_lib.info(f'{sender}, found {len(group_records)} record groups.')
@@ -519,7 +487,7 @@ def qc_3c_stream(stream, segment_length, window, sorted_channel_list, channel_gr
 
                         # Calculate number of points needed for FFT (as a power of 2) based on the run parameters.
                         num_samp_needed_03 = 2 ** int(math.log(int((float(segment_length) / samplerate + 1) / window),
-                                                        2))  # make sure it is power of 2
+                                                               2))  # make sure it is power of 2
                         if delay01 == 0.0 and delay02 == 0.0:
                             msg_lib.info(f'{sender}, start times OK')
                         else:
@@ -622,5 +590,3 @@ def qc_3c_stream(stream, segment_length, window, sorted_channel_list, channel_gr
     if verbose:
         msg_lib.info(f'{sender}, passed records: {qc_record_list}')
     return qc_record_list
-
-
