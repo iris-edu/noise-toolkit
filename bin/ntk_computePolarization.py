@@ -55,7 +55,9 @@ import sfLib as sf_lib
      along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
   HISTORY:
-
+    
+    2023-05-23 Manoch: v.2.1.1 Addressing the issue where some traces are rejected based on the end-start length.
+                       We are now selecting the start of traces based on the earliest start times in the stream.
     2021-08-31 Manoch: v.2.1.0 This patch addresses the output file naming issue when data were read from files.
                        The bug was causing output to be written under the same file name. This patch also makes some 
                        PEP 8 style fixes and adds the script version to the log file.
@@ -92,7 +94,7 @@ import sfLib as sf_lib
 
 """
 
-version = 'v.2.1.0'
+version = 'v.2.1.1'
 script = sys.argv[0]
 script = os.path.basename(script)
 
@@ -355,7 +357,7 @@ except Exception as ex:
 if timing:
     t0 = utils_lib.time_it('request info', t0)
 
-msg_lib.info(f'{script}, Requesting {request_network}.{request_location}.{request_station}.'
+msg_lib.info(f'Requesting {request_network}.{request_location}.{request_station}.'
              f'{request_channel} from  {request_start_date_time}  to  {request_end_date_time}')
 
 # Production label.
@@ -370,7 +372,7 @@ production_label = f'{production_label}\ndoi:{shared.ntk_doi}'
 try:
     plot_index = utils_lib.param(param, 'xType').xType.index(xtype)
 except Exception as e:
-    msg_lib.error(f'{script}, Invalid plot type ({xtype})\n{e}', 2)
+    msg_lib.error(f'Invalid plot type ({xtype})\n{e}', 2)
     usage()
     sys.exit()
 
@@ -378,14 +380,14 @@ if timing:
     t0 = utils_lib.time_it('parameters', t0)
 
 if verbose:
-    msg_lib.info(f'{script}, Window From {request_start_date_time} to '
+    msg_lib.info(f'Window From {request_start_date_time} to '
                  f'{request_end_date_time}\n')
 
 # Window duration.
 try:
     duration = int(request_end_datetime - request_start_datetime)
 except Exception as e:
-    msg_lib.error(f'{script}, Invalid date-time [{request_start_date_time} - {request_end_date_time}]\n{e}', 1)
+    msg_lib.error(f'Invalid date-time [{request_start_date_time} - {request_end_date_time}]\n{e}', 1)
     usage()
     sys.exit()
 
@@ -393,13 +395,13 @@ if timing:
     t0 = utils_lib.time_it('window info', t0)
 
 if verbose:
-    msg_lib.info(f'{script}, plot_index: {plot_index} '
+    msg_lib.info(f'plot_index: {plot_index} '
                  f'Window Duration: {duration} '
                  f'[PAR] XLABEL: {utils_lib.param(param, "xlabel").xlabel[xtype]} '
                  f'[PAR] XLIM({utils_lib.param(param, "xlimMin").xlimMin}, '
                  f'{utils_lib.param(param, "xlimMax").xlimMax})'
                  f'[PAR] YLIM({utils_lib.param(param, "ylimLow").ylimLow}, '
-                 f'{utils_lib.param(param, "ylimHigh").ylimHigh})')
+                 f'{utils_lib.param(param, "ylimHigh").ylimHigh})\n')
 
 # Request date information.
 try:
@@ -419,7 +421,7 @@ else:
 
     fedcatalog_url = f'{shared.fedcatalog_url}{request_query}'
     cat = ts_lib.get_fedcatalog_station(fedcatalog_url, request_start_date_time,
-                                        request_end_date_time, shared.chunk_length)
+                                        request_end_date_time, window_length, shared.chunk_length)
 
 # Production label.
 production_date = datetime.datetime.utcnow().replace(microsecond=0).isoformat()
@@ -430,11 +432,10 @@ production_label = f'{production_label} doi:{shared.ntk_doi}'
 
 # Get data from the data center and put them all in one stream.
 stream = None
-for _key in cat:
+for _ind, _key in enumerate(cat):
+    msg_lib.info(f'{_key} requests')
     st = None
-
     if verbose:
-        msg_lib.info('Sending requests for:')
         if type(cat[_key]['bulk']) == str:
             msg_lib.info(cat[_key]['bulk'])
         else:
@@ -442,38 +443,64 @@ for _key in cat:
                 msg_lib.info(line)
 
     if not cat[_key]['bulk']:
-        msg_lib.warning(f'{script}, Skipping data request from {_key}, no stations to request!\n')
+        msg_lib.warning(f'Skipping data request from {_key}, no stations to request!\n')
         continue
 
     if request_client == 'FILES':
-        msg_lib.info(f'{script}, Reading data from {cat[_key]["bulk"]}')
+        msg_lib.info(f'Reading data from {cat[_key]["bulk"]}')
     else:
-        msg_lib.info(f'{script}, Requesting data from {_key} via {ts_lib.get_service_url(cat, _key)}\n')
+        msg_lib.info(f'Requesting data from {_key} via'
+                     f' {ts_lib.get_service_url(cat, _key)}:\n{cat[_key]["bulk"]}')
 
         # Set the client up for this data center.
         try:
             client = Client(ts_lib.get_service_url(cat, _key))
             st = client.get_waveforms_bulk(cat[_key]['bulk'], attach_response=True)
+            if st is None:
+                continue
             if stream is None:
                 stream = st.copy()
             else:
                 # We can only append a single Trace object to the current Stream object.
                 for tr in st:
                     stream.append(tr.copy())
+                    stream.merge(method=1)
+                    stream = stream.split()
+
         except Exception as ex:
             msg_lib.warning(f'{script}, {ex}')
 
     # We only want to read as much data as we have in the stream.
     if st is not None:
         # When requesting data.
+        bulk_items = cat[_key]["bulk"][0]
+        bulk_start_datetime = UTCDateTime(bulk_items[-2])
+        bulk_end_datetime = UTCDateTime(bulk_items[-1])
+        if verbose:
+            msg_lib.info(f'\n{_ind}.0-----> Received stream for the request time: {bulk_start_datetime} to '
+                         f'{bulk_end_datetime}\n{st}\n')
         st_starttime = max([tr.stats.starttime for tr in st])
-        max_starttime = max(st_starttime, request_start_datetime)
-
+        if len(st) > 1:
+            min_starttime = min(st_starttime, bulk_start_datetime)
+        else:
+            min_starttime = st_starttime
+        if verbose:
+            msg_lib.info(f'{_ind}.1-----> The minimum start time in the stream is: {st_starttime} '
+                         f'vs expected start of  {bulk_start_datetime}')
         st_endtime = max([tr.stats.endtime for tr in st])
-        min_endtime = min(st_endtime, request_end_datetime)
+
+        if verbose:
+            msg_lib.info(f'{_ind}.2-----> The maximum end time in the stream is: {st_endtime} '
+                         f'vs expected end of  {bulk_end_datetime}')
+        if len(st) > 1:
+            min_endtime = min(st_endtime, bulk_end_datetime)
+        else:
+            min_endtime = st_endtime
+        if verbose:
+            msg_lib.info(f'{_ind}.3-----> Minimum processing end time is st at  {min_endtime}')
     else:
         # When reading files.
-        max_starttime = request_start_datetime
+        min_starttime = request_start_datetime
         min_endtime = request_end_datetime
 
     """Start processing time segments.
@@ -484,21 +511,30 @@ for _key in cat:
       RA - note here we are defining the number of time-steps as the number of window shifts
       that exist within the length of the request-time
     
-      flag to only process segments that start at the begining of the window
+      flag to only process segments that start at the beginning of the window
     """
     give_warning = True
     for t_step in range(0, int(duration), int(utils_lib.param(param, 'windowShift').windowShift)):
         if timing:
             t0 = utils_lib.time_it('start WINDOW', t0)
-
-        t_start = max_starttime + t_step
+        t_start = min_starttime + t_step
         t_end = t_start + window_length
+        if verbose:
+            msg_lib.info(f'{_ind}.{t_step}++++Duration: {int(duration)}, '
+                         f'Window shift: { int(utils_lib.param(param, "windowShift").windowShift)}, '
+                         f't_step: {t_step}, min_starttime: {min_starttime}, t_star: {t_start}, '
+                         f'window_length: {window_length}, t_end: {t_end}, min_endtime: {min_endtime}')
+
         if t_end > min_endtime:
             t_end = min_endtime
+            if verbose:
+                msg_lib.info(f'{_ind}.{t_step}++++Adjusted: t_end: {t_end}, with t_star: {t_start}')
 
-        if t_end - t_start < window_length:
+        t_diff = t_end - t_start
+        #if not np.isclose(t_diff, window_length, rtol=1e-05, atol=1e-08, equal_nan=False):
+        if round(t_diff) != round(window_length):
             if give_warning:
-                msg_lib.warning(script, f'Interval from {t_start} to {t_end} is shorter than the '
+                msg_lib.warning(script, f'Interval from {t_start} to {t_end} is {t_diff} s and is shorter than the '
                                         f'windowLength parameter {window_length} seconds, will skip.')
                 give_warning = False
             continue
@@ -515,13 +551,13 @@ for _key in cat:
         msg_lib.message(title)
         if request_client == 'FILES':
             file_tag = file_lib.get_tag(".", [request_network, request_station, request_location, request_channel])
-            msg_lib.info(f'{script}, Reading '
+            msg_lib.info(f'Reading '
                          f'{file_tag} '
                          f'from {segment_start} to {segment_end} '
                          f'from {utils_lib.param(param, "requestClient").requestClient}')
         else:
             file_tag = file_lib.get_tag(".", [request_network, request_station, request_location, request_channel])
-            msg_lib.info(f'{script}, Requesting '
+            msg_lib.info(f'Requesting '
                          f'{file_tag} '
                          f'from {segment_start} to {segment_end} '
                          f'from {utils_lib.param(param, "requestClient").requestClient}')
@@ -536,9 +572,10 @@ for _key in cat:
                                                                   segment_start, segment_end, useClient,
                                                                   utils_lib.param(param, 'fileTag').fileTag,
                                                                   resp_dir=response_directory)
+        msg_lib.message(f'Stream before the slice {stream}')
 
         st = stream.slice(starttime=t_start, endtime=t_end, keep_empty_traces=False, nearest_sample=True)
-        msg_lib.message(f'Slice stream between {t_start} and {t_end}')
+        msg_lib.message(f'Stream after slicing between {t_start} and {t_end}\n {st}')
 
         # Did we manage to get the data?
         if st is None or not st:
@@ -605,8 +642,8 @@ for _key in cat:
                     channel_tr[_i].data /= float(channel_tr[_i].stats.response.instrument_sensitivity.value)
 
             except Exception as ex:
-                code = msg_lib.error(f'Removing response from {channel[_i]} failed: {ex}')
-                sys.exit(4)
+                code = msg_lib.error(f'Removing response from {channel[_i]} failed: {ex}', 4)
+                sys.exit(code)
 
         t0 = utils_lib.time_it('Removed response', t0)
 
@@ -673,7 +710,7 @@ for _key in cat:
         # Avoid log of bad numbers.
         if this_num_sample <= 0:
             msg_lib.warning('FFT',
-                            f'needed {num_samples_needed} smples but no samples are available, will skip this trace')
+                            f'needed {num_samples_needed} samples but no samples are available, will skip this trace')
             continue
         num_samples = 2 ** int(math.log(this_num_sample, 2))  # make sure it is power of 2
         msg_lib.info(f'{script}, num_samples Available: {num_samples}')
