@@ -3,8 +3,8 @@
  Data Products Team\
  Noise Toolkit (NTK)
 
- 2020-12-08\
- v2.0.0 for Python 3
+2023-07-05\
+ v2.1.0 for Python 3
 
 ------------------------------------------------------------------------------------------------------------------------
 
@@ -88,12 +88,7 @@ This package is composed of three scripts:
     - ntk_computePolarization.py – calculates polarization parameters for a given station and time window
     - ntk_extractPolarHour.py – tracts polarization parameters for the given channels and bounding parameters
     - ntk_binPolarDay.py – bins polarization attributes to daily files for a given channel tag and bounding parameters
-    
-**CHANGES:**
 
-    PSD.CHANGES - history of changes to the PDF/PSD package
-    ME.CHANGES - history of changes to the ME package
-    POLAR.CHANGES - history of changes to the POLAR package
 
 **MORE INFORMATION:**
 
@@ -102,5 +97,5 @@ see the Wiki pages at https://github.com/iris-edu/noise-toolkit/wiki
  
  COMMENTS/QUESTIONS:
 
-    Please contact manoch@iris.washington.edu
+    Please contact manoch@earthscope.org
 
