@@ -209,7 +209,7 @@ def get_service_url(ws_catalog, ws_dc):
     return ws_service_url
 
 
-def get_fedcatalog_station(req_url, request_start, request_end, chunk_length, chunk_count=1):
+def get_fedcatalog_station(req_url, request_start, request_end, window_length, chunk_length, chunk_count=1):
     """Get station list from fedcatalog service."""
 
     # This dictionary stores all the fedcatalog information.
@@ -313,13 +313,14 @@ def get_fedcatalog_station(req_url, request_start, request_end, chunk_length, ch
         while start < end:
             segment += 1
             req_start = start.strftime('%Y-%m-%dT%H:%M:%S')
+            # The actual request's end time is extended by a window length to allow processing of the last window.
             if start + chunk_length <= end:
-                req_end = (start + chunk_length).strftime('%Y-%m-%dT%H:%M:%S')
+                req_end = (start + chunk_length + window_length).strftime('%Y-%m-%dT%H:%M:%S')
             else:
-                req_end = end.strftime('%Y-%m-%dT%H:%M:%S')
+                req_end = (end + window_length).strftime('%Y-%m-%dT%H:%M:%S')
             _net_sta_key = f'{net}_{sta}_{chan}_{segment}'
             bulk_list[_net_sta_key] = (net, sta, loc, chan, req_start, req_end)
-            start += chunk_length + 0.0001
+            start += chunk_length + 0.00001
 
     # Save the last data center's bulk list.
     if bulk_list:
