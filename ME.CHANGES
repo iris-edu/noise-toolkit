@@ -1,8 +1,0 @@
-V.2.0.0 2016-11-16: Python 3 and adoption of PEP 8 style guide
-V.0.6.0 2015-04-30: release with more uniform output file names
-        2015-02-20: addressed the output file naming issue
-V.0.5.0 2014-11-24: Beta release
-        2014-11-24: release compatible with the PDF/PSD bundle format
-        2014-03-07: Initial Alpha release
-        2014-03-19: Added data file input option
-
