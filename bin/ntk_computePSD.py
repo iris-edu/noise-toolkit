@@ -54,7 +54,7 @@ import shared as shared
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
  History:
-
+    2023-07-05 Manoch: v.2.1.1 Addresses an issue with "noverlap" argument of csd not being an integer.
     2021-08-31 Manoch: v.2.1.0 This patch addresses the output file naming issue when data were read from files.
                        The bug was causing output to be written under the same file name. This patch also adds the 
                        script version to the log file.
@@ -91,7 +91,7 @@ import shared as shared
 
 """
 
-version = 'v.2.1.0'
+version = 'v.2.1.1'
 script = sys.argv[0]
 script = os.path.basename(script)
 
@@ -417,7 +417,7 @@ else:
 
     fedcatalog_url = f'{shared.fedcatalog_url}{request_query}'
     cat = ts_lib.get_fedcatalog_station(fedcatalog_url, request_start_date_time,
-                                        request_end_date_time, shared.chunk_length, chunk_count=shared.chunk_count)
+                                        request_end_date_time, window_length, shared.chunk_length)
 
 # Production label.
 production_date = datetime.datetime.utcnow().replace(microsecond=0).isoformat()
@@ -607,7 +607,7 @@ for _key in cat:
 
             # Do the CSD
             power, freq = csd(tr.data, tr.data, NFFT=nfft,
-                              noverlap=nfft * windlap, Fs=1. / delta,
+                              noverlap=int(nfft * windlap), Fs=1. / delta,
                               scale_by_freq=True)
 
             # Remove first Point
